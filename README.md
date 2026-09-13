@@ -1,10 +1,11 @@
 <!--
   Conventions
   Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN; numbering restarts per platform
-  Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries as needed
+  Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries, lab as needed
   Guides    Guides/<platform>/ holds one file per interface
   Table     completed cases only; Key Finding = the result, not the topic
-  Type      how far the arc went: Investigation, or Investigation → Implementation → Validation
+  Type      how far the arc went: Analysis, or Analysis > Implementation > Validation
+  Access    Read-only | Contributor | Full control
   Scope     identity and access only; detection goes in security-operations
 -->
 
@@ -14,15 +15,15 @@ Security casework covering identity, access, and governance across cloud and on-
 
 Each case includes sanitized evidence, methodology, technical analysis, the commands used, findings, root-cause analysis, and recommendations.
 
-> **How to read the Type column.** Cases in training environments are read-only, so they cover investigation and recommendation: the scope an IAM or SOC analyst actually works in. Cases in my own lab carry the full arc: investigate, implement, validate. Environment and access level are stated in every case README.
+> **How to read the table.** **Type** shows how far a case went: analysis and recommendation, or the full arc through implementation and validation. **Access** shows the permission level I held, which determines what the case could cover. Both are stated in full in each case README.
 
 ---
 
 ## Cases
 
-| Case | Investigation | Type | Environment | Key Finding |
-|---|---|---|---|---|
-| **IAM-AZ-001** | [Operation Dead Deploy](cases/IAM-AZ-001-operation-dead-deploy/) | Investigation | Azure · training tenant · read-only | Naming policy correctly detected the violation but ran in Audit mode, recording non-compliance without preventing deployment |
+| Case | Name | Type | Environment | Access | Key Finding |
+|---|---|---|---|---|---|
+| **IAM-AZ-001** | [Operation Dead Deploy](cases/IAM-AZ-001-operation-dead-deploy/) | Analysis | Azure | Read-only | Azure Policy detected the naming violation correctly; the control was assigned in Audit mode, so non-compliance was recorded rather than blocked |
 
 ---
 
@@ -45,7 +46,7 @@ The same process applies regardless of platform or access level:
 7. Correlate findings with additional evidence.
 8. Document the commands, evidence, findings, and conclusions.
 
-Where I have write access, the case continues: implement the recommendation, validate that it works, and confirm it does not break legitimate activity.
+Where I hold write access, the case continues: implement the recommendation, validate that it works, and confirm it does not break legitimate activity.
 
 ---
 
@@ -104,6 +105,12 @@ What am I investigating?
 <!-- new platform sections mirror the blocks above -->
 
 Guides for AWS and Google Cloud are added alongside the first case in those environments.
+
+---
+
+## Reproducible Environments
+
+Cases I build myself include the infrastructure code used to create them, under `cases/<CASE-ID>/lab/`. Where that code exists, the environment can be stood up from scratch and the result reproduced independently.
 
 ---
 
