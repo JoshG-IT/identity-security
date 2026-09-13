@@ -66,22 +66,6 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 | Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit | [Microsoft Graph](guides/azure/microsoft-graph.md) |
 | Azure Portal | Visual validation, aggregated views, blocked API paths | [Azure Portal](guides/azure/azure-portal.md) |
 
-```text
-What am I investigating?
-        |
-        +-- Azure resource, RBAC, Policy, lock, tag, or network
-        |       --> Azure CLI
-        |
-        +-- Repeated task, scripting, or cross-subscription query
-        |       --> Azure PowerShell
-        |
-        +-- Entra ID, identity, sign-in, or directory data
-        |       --> Microsoft Graph
-        |
-        +-- Visual validation, or an API path that is blocked
-                --> Azure Portal
-```
-
 ### On-Premises
 
 | Interface | Best For | Guide |
