@@ -1,7 +1,7 @@
 <!--
   Conventions
   Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN; numbering restarts per platform
-  Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries, lab as needed
+  Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries as needed
   Guides    Guides/<platform>/ holds one file per interface
   Table     completed cases only; Key Finding = the result, not the topic
   Type      how far the arc went: Analysis, or Analysis > Implementation > Validation
@@ -86,6 +86,7 @@ What am I investigating?
 | Interface | Best For | Guide |
 |---|---|---|
 | Active Directory PowerShell | Users, groups, computers, delegation, privilege, replication | [Active Directory PowerShell](Guides/on-prem/active-directory-powershell.md) |
+| Microsoft Graph | Hybrid identity: objects synchronized from on-premises into Entra ID | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
 | Group Policy | Policy inspection, RSoP, security baseline settings | [Group Policy](Guides/on-prem/group-policy.md) |
 | LDAP and dsquery | Precise filters, userAccountControl bit matching, module-free queries | [LDAP and dsquery](Guides/on-prem/ldap-dsquery.md) |
 
@@ -105,12 +106,6 @@ What am I investigating?
 <!-- new platform sections mirror the blocks above -->
 
 Guides for AWS and Google Cloud are added alongside the first case in those environments.
-
----
-
-## Reproducible Environments
-
-Cases I build myself include the infrastructure code used to create them, under `cases/<CASE-ID>/lab/`. Where that code exists, the environment can be stood up from scratch and the result reproduced independently.
 
 ---
 
