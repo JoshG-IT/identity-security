@@ -56,7 +56,7 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 
 | Interface | Best For | Guide |
 |---|---|---|
-| Azure CLI | Resources, RBAC, Policy, networking, tags, locks, reconnaissance | [Azure CLI](Guides/azure/azure-cli.md) |
+| Azure CLI | Resources, RBAC, Policy, networking, tags, locks, reconnaissance | [Azure CLI](IAM-001-privileged-access-investigation/queries/azure-cli.md) |
 | Azure PowerShell | Scripting, automation, loops, reusable workflows | [PowerShell](Guides/azure/powershell.md) |
 | Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit data | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
 | KQL | Logs, telemetry, Log Analytics, Sentinel, Defender, event investigation | [KQL](Guides/azure/kql.md) |
