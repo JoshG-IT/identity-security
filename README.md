@@ -1,20 +1,20 @@
 <!--
   Conventions
-  Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN — numbering restarts per platform
-  Folders   cases/<CASE-ID>-slug/ — README + evidence always; diagrams, docs, queries as needed
-  Guides    Guides/<platform>/ — one file per interface
+  Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN; numbering restarts per platform
+  Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries as needed
+  Guides    Guides/<platform>/ holds one file per interface
   Table     completed cases only; Key Finding = the result, not the topic
-  Type      shows how far the arc went: Investigation, or Investigation → Implementation → Validation
-  Scope     identity and access only — detection goes in security-operations
+  Type      how far the arc went: Investigation, or Investigation → Implementation → Validation
+  Scope     identity and access only; detection goes in security-operations
 -->
 
 # Identity Security
 
-Security casework covering identity, access, and governance across cloud and on-premises environments — Microsoft Entra ID, Active Directory, AWS IAM, Google Cloud IAM, and the RBAC and policy controls that govern them.
+Security casework covering identity, access, and governance across cloud and on-premises environments: Microsoft Entra ID, Active Directory, AWS IAM, Google Cloud IAM, and the RBAC and policy controls that govern them.
 
 Each case includes sanitized evidence, methodology, technical analysis, the commands used, findings, root-cause analysis, and recommendations.
 
-> **How to read the Type column.** Cases in training environments are read-only, so they cover investigation and recommendation — the scope a SOC or IAM analyst actually works in. Cases in my own lab carry the full arc: investigate, implement, validate. Environment and access level are stated in every case README.
+> **How to read the Type column.** Cases in training environments are read-only, so they cover investigation and recommendation: the scope an IAM or SOC analyst actually works in. Cases in my own lab carry the full arc: investigate, implement, validate. Environment and access level are stated in every case README.
 
 ---
 
@@ -28,7 +28,7 @@ Each case includes sanitized evidence, methodology, technical analysis, the comm
 
 ## Skills Demonstrated
 
-`Azure CLI` · `Azure PowerShell` · `Microsoft Graph` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Root Cause Analysis`
+`Azure CLI` · `Azure PowerShell` · `Microsoft Graph` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Active Directory` · `Group Policy` · `LDAP` · `Root Cause Analysis`
 
 ---
 
@@ -51,7 +51,7 @@ Where I have write access, the case continues: implement the recommendation, val
 
 ## Investigation Interfaces
 
-I use each case as an opportunity to learn which interface suits the resource, identity, configuration, log source, or activity being examined. The goal is not to force every case through every interface.
+I use each case as an opportunity to learn which interface suits the resource, identity, configuration, or activity being examined. The goal is not to force every case through every interface.
 
 ### Microsoft Azure
 
@@ -59,14 +59,10 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 
 | Interface | Best For | Guide |
 |---|---|---|
-| Azure CLI | Resources, RBAC, Policy, networking, tags, locks, reconnaissance | [Azure CLI](investigations/IAM-001-privileged-access-investigation/queries/azure-cli.md) |
-| Azure PowerShell | Scripting, automation, loops, reusable workflows | [PowerShell](Guides/azure/powershell.md) |
-| Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit data | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
-| KQL | Logs, telemetry, Log Analytics, Sentinel, Defender, event investigation | [KQL](Guides/azure/kql.md) |
-| Azure Resource Graph | Large-scale resource discovery, inventory, filtering | [Azure Resource Graph](Guides/azure/azure-resource-graph.md) |
-| Azure Portal | Visual exploration, validation, tasks better suited to a graphical interface | [Azure Portal](Guides/azure/azure-portal.md) |
-
-#### Interface Selection — Azure
+| Azure CLI | Resources, RBAC, Policy, deployment history, reconnaissance | [Azure CLI](Guides/azure/azure-cli.md) |
+| Azure PowerShell | Scripting, loops, cross-subscription queries, independent validation | [Azure PowerShell](Guides/azure/powershell.md) |
+| Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
+| Azure Portal | Visual validation, aggregated views, blocked API paths | [Azure Portal](Guides/azure/azure-portal.md) |
 
 ```text
 What am I investigating?
@@ -74,26 +70,43 @@ What am I investigating?
         +-- Azure resource, RBAC, Policy, lock, tag, or network
         |       --> Azure CLI
         |
-        +-- Repeated task, scripting, or automation
+        +-- Repeated task, scripting, or cross-subscription query
         |       --> Azure PowerShell
         |
         +-- Entra ID, identity, sign-in, or directory data
         |       --> Microsoft Graph
         |
-        +-- Visual exploration or validation
+        +-- Visual validation, or an API path that is blocked
                 --> Azure Portal
 ```
 
-<!-- new platform sections mirror the Azure block above -->
+### On-Premises
 
-Platform guides for AWS, Google Cloud, and on-premises environments are added as cases in those environments are completed.
+| Interface | Best For | Guide |
+|---|---|---|
+| Active Directory PowerShell | Users, groups, computers, delegation, privilege, replication | [Active Directory PowerShell](Guides/on-prem/active-directory-powershell.md) |
+| Group Policy | Policy inspection, RSoP, security baseline settings | [Group Policy](Guides/on-prem/group-policy.md) |
+| LDAP and dsquery | Precise filters, userAccountControl bit matching, module-free queries | [LDAP and dsquery](Guides/on-prem/ldap-dsquery.md) |
+
+```text
+What am I investigating?
+        |
+        +-- Users, groups, computers, delegation, or privilege
+        |       --> Active Directory PowerShell
+        |
+        +-- Applied configuration, security baseline, or audit settings
+        |       --> Group Policy
+        |
+        +-- Precise attribute filtering, or no AD module available
+                --> LDAP / dsquery
+```
+
+<!-- new platform sections mirror the blocks above -->
+
+Guides for AWS and Google Cloud are added alongside the first case in those environments.
 
 ---
 
 ## Data Handling
 
-These cases document **method and reasoning**, not training answer keys. Challenge values, environment-specific identifiers, tenant and subscription IDs, object and group IDs, usernames, and resource names are redacted from public evidence.
-
----
-
-Scenario sources are credited within each case. All analysis, evidence collection, findings, and documentation are my own work.
+These cases document method and reasoning. Tenant and subscription IDs, object and group IDs, policy and assignment GUIDs, usernames, email addresses, and resource names that expose environment-specific information are redacted from public evidence.
