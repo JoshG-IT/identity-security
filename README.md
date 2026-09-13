@@ -2,8 +2,8 @@
   Conventions
   Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN; numbering restarts per platform
   Folders   cases/<CASE-ID>-slug/ holds README + evidence always; diagrams, docs, queries as needed
-  Guides    Guides/<platform>/ holds one file per interface
-  Table     completed cases only; Key Finding = the result, not the topic
+  Guides    guides/<platform>/ holds one file per interface
+  Table     Key Finding = the result, not the topic
   Type      how far the arc went: Analysis, or Analysis > Implementation > Validation
   Access    Read-only | Contributor | Full control
   Scope     identity and access only; detection goes in security-operations
@@ -24,6 +24,7 @@ Each case includes sanitized evidence, methodology, technical analysis, the comm
 | Case | Name | Type | Environment | Access | Key Finding |
 |---|---|---|---|---|---|
 | **IAM-AZ-001** | [Operation Dead Deploy](cases/IAM-AZ-001-operation-dead-deploy/) | Analysis | Azure | Read-only | Azure Policy detected the naming violation correctly; the control was assigned in Audit mode, so non-compliance was recorded rather than blocked |
+| **IAM-AZ-002** | [The Stolen Identity](cases/IAM-AZ-002-the-stolen-identity/) | Analysis | Azure | Read-only | Pending |
 
 ---
 
@@ -60,10 +61,10 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 
 | Interface | Best For | Guide |
 |---|---|---|
-| Azure CLI | Resources, RBAC, Policy, deployment history, reconnaissance | [Azure CLI](Guides/azure/azure-cli.md) |
-| Azure PowerShell | Scripting, loops, cross-subscription queries, independent validation | [Azure PowerShell](Guides/azure/powershell.md) |
-| Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
-| Azure Portal | Visual validation, aggregated views, blocked API paths | [Azure Portal](Guides/azure/azure-portal.md) |
+| Azure CLI | Resources, RBAC, Policy, deployment history, reconnaissance | [Azure CLI](guides/azure/azure-cli.md) |
+| Azure PowerShell | Scripting, loops, cross-subscription queries, independent validation | [Azure PowerShell](guides/azure/powershell.md) |
+| Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit | [Microsoft Graph](guides/azure/microsoft-graph.md) |
+| Azure Portal | Visual validation, aggregated views, blocked API paths | [Azure Portal](guides/azure/azure-portal.md) |
 
 ```text
 What am I investigating?
@@ -85,10 +86,10 @@ What am I investigating?
 
 | Interface | Best For | Guide |
 |---|---|---|
-| Active Directory PowerShell | Users, groups, computers, delegation, privilege, replication | [Active Directory PowerShell](Guides/on-prem/active-directory-powershell.md) |
-| Microsoft Graph | Hybrid identity: objects synchronized from on-premises into Entra ID | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
-| Group Policy | Policy inspection, RSoP, security baseline settings | [Group Policy](Guides/on-prem/group-policy.md) |
-| LDAP and dsquery | Precise filters, userAccountControl bit matching, module-free queries | [LDAP and dsquery](Guides/on-prem/ldap-dsquery.md) |
+| Active Directory PowerShell | Users, groups, computers, delegation, privilege, replication | [Active Directory PowerShell](guides/on-prem/active-directory-powershell.md) |
+| Microsoft Graph | Hybrid identity: objects synchronized from on-premises into Entra ID | [Microsoft Graph](guides/azure/microsoft-graph.md) |
+| Group Policy | Policy inspection, RSoP, security baseline settings | [Group Policy](guides/on-prem/group-policy.md) |
+| LDAP and dsquery | Precise filters, userAccountControl bit matching, module-free queries | [LDAP and dsquery](guides/on-prem/ldap-dsquery.md) |
 
 ```text
 What am I investigating?
