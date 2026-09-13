@@ -75,19 +75,6 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 | Group Policy | Policy inspection, RSoP, security baseline settings | [Group Policy](guides/on-prem/group-policy.md) |
 | LDAP and dsquery | Precise filters, userAccountControl bit matching, module-free queries | [LDAP and dsquery](guides/on-prem/ldap-dsquery.md) |
 
-```text
-What am I investigating?
-        |
-        +-- Users, groups, computers, delegation, or privilege
-        |       --> Active Directory PowerShell
-        |
-        +-- Applied configuration, security baseline, or audit settings
-        |       --> Group Policy
-        |
-        +-- Precise attribute filtering, or no AD module available
-                --> LDAP / dsquery
-```
-
 <!-- new platform sections mirror the blocks above -->
 
 Guides for AWS and Google Cloud are added alongside the first case in those environments.
