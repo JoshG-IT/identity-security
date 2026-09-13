@@ -1,85 +1,94 @@
-# MHI | Mad Hat Investigations
+<!--
+  Conventions
+  Case IDs  IAM-<AZ|AWS|GCP|ONP>-NNN — numbering restarts per repo/env
+  Folders   investigations/IAM-XX-NNN-slug/ — README, diagrams, docs, evidence, queries
+  Guides    Guides/<platform>/ — one file per interface
+  Table     completed cases only; Key Finding = the result, not the topic
+  Scope     identity and access only — detection goes in security-operations
+-->
 
-### Security Investigation Portfolio
+# Identity Security
 
-Hands-on security investigations completed through **Mad Hat** using live, multi-user training environments.
+Security investigations covering identity, access, and governance across cloud and on-premises environments — Microsoft Entra ID, Active Directory, AWS IAM, Google Cloud IAM, and the policy and RBAC controls that govern them.
 
-MHI is my case-based portfolio for documenting practical security investigations across infrastructure, Microsoft Azure, AWS, and Google Cloud.
+Each case includes sanitized evidence, investigation methodology, technical analysis, the commands used, findings, root-cause analysis, and security recommendations.
 
-Each completed case includes sanitized evidence, investigation methodology, technical analysis, commands or queries used, findings, root-cause analysis, and security recommendations.
-
-> **Training Environment:** These investigations are performed in hands-on training environments and are not presented as production customer incidents.
-
----
-
-## Investigation Tracks
-
-| Track | Focus | Progress | Status |
-|---|---|:---:|:---:|
-| [**Infrastructure Security Operations**](Infrastructure%20Security%20Operations/) | Windows, networking, forensics, Active Directory, Linux, scripting | 0 / 8 | ⏳ Pending |
-| [**Azure Security Investigations**](Azure%20Security%20Investigations/) | Governance, identity, RBAC, compute, networking, storage, detection and cloud security | 1 / 10 | 🟢 Active |
-| [**AWS Security Investigations**](AWS%20Security%20Investigations/) | AWS security investigation scenarios | - | ⏳ Pending |
-| [**GCP Security Investigations**](GCP%20Security%20Investigations/) | Google Cloud security investigation scenarios | - | ⏳ Pending |
+> **Training environments.** These investigations are performed in hands-on, multi-user training tenants and are not presented as production customer incidents. Scenario sources are credited within each case.
 
 ---
 
-## Completed Investigations
+## Investigations
 
-| Case | Investigation | Track | Focus |
-|---|---|---|---|
-| **MHI-AZ-001** | [**Operation Dead Deploy**](Azure%20Security%20Investigations/MHI-AZ-001-operation-dead-deploy/) | Azure | Governance, ARM deployment tracing, Azure Policy and RBAC |
-
----
-
-**Skills demonstrated:**
-
-`Azure CLI` · `ARM` · `Azure Policy` · `RBAC` · `JMESPath` · `Azure PowerShell` · `Root Cause Analysis`
+| Case | Environment | Investigation | Focus | Key Finding |
+|---|---|---|---|---|
+| **IAM-AZ-001** | Azure | [Operation Dead Deploy](investigations/IAM-AZ-001-operation-dead-deploy/) | Governance · ARM deployment tracing · Azure Policy · RBAC | Naming policy correctly detected the violation but was configured in Audit mode, recording non-compliance without preventing deployment |
 
 ---
 
-## Portfolio Progress
+## Skills Demonstrated
 
-**1 documented investigation completed**
+`Azure CLI` · `Azure PowerShell` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Root Cause Analysis`
+
+---
+
+## Investigation Approach
+
+The same process applies regardless of platform:
+
+1. Understand the investigation objective.
+2. Identify the object, service, identity, or data source involved.
+3. Determine which interface is appropriate for retrieving or analyzing the information.
+4. Inspect the available information before heavily filtering it.
+5. Understand the object structure, IDs, scope, and relationships.
+6. Filter or query the information needed for the investigation.
+7. Correlate findings with additional evidence when appropriate.
+8. Document the commands, evidence, findings, and conclusions.
+
+---
+
+## Investigation Interfaces
+
+I use each investigation as an opportunity to learn which interface suits the resource, identity, configuration, log source, or activity being examined. The goal is not to force every case through every interface.
+
+### Microsoft Azure
+
+Primary focus is **Azure CLI**; the others are used where relevant.
+
+| Interface | Best For | Guide |
+|---|---|---|
+| Azure CLI | Resources, RBAC, Policy, networking, tags, locks, reconnaissance | [Azure CLI](Guides/azure/azure-cli.md) |
+| Azure PowerShell | Scripting, automation, loops, reusable workflows | [PowerShell](Guides/azure/powershell.md) |
+| Microsoft Graph | Entra ID, users, groups, applications, service principals, sign-ins, audit data | [Microsoft Graph](Guides/azure/microsoft-graph.md) |
+| KQL | Logs, telemetry, Log Analytics, Sentinel, Defender, event investigation | [KQL](Guides/azure/kql.md) |
+| Azure Resource Graph | Large-scale resource discovery, inventory, filtering | [Azure Resource Graph](Guides/azure/azure-resource-graph.md) |
+| Azure Portal | Visual exploration, validation, tasks better suited to a graphical interface | [Azure Portal](Guides/azure/azure-portal.md) |
+
+#### Interface Selection — Azure
 
 ```text
-Infrastructure Security Operations    0 / 8
-Azure Security Investigations         1 / 10
-AWS Security Investigations           Pending
-GCP Security Investigations           Pending
+What am I investigating?
+        |
+        +-- Azure resource, RBAC, Policy, lock, tag, or network
+        |       --> Azure CLI
+        |
+        +-- Repeated task, scripting, or automation
+        |       --> Azure PowerShell
+        |
+        +-- Entra ID, identity, sign-in, or directory data
+        |       --> Microsoft Graph
+        |
+        +-- Logs, events, telemetry, or security activity
+        |       --> KQL
+        |
+        +-- Large-scale Azure resource inventory
+        |       --> Azure Resource Graph
+        |
+        +-- Visual exploration or validation
+                --> Azure Portal
 ```
 
 ---
 
-## About the Environment
+## Data Handling
 
-The investigations documented here originate from hands-on training through **Mad Hat**.
-
-The portfolio reorganizes the concluding practical exercises into independent security investigation cases.
-
-## Investigation Interfaces and Training Guides
-
-I use the Mad Hat investigation scenarios as opportunities to become familiar with different command-line, scripting, API, query, and graphical interfaces across each platform.
-
-The objective is not to use every available interface during every investigation. Instead, I use the scenarios to learn which tools are appropriate for the resource, service, identity, log source, or other data being investigated.
-
-The interfaces used vary by platform and investigation. Detailed learning notes are maintained within each investigation track.
-
-| Track | Interface and Training Guides |
-|---|---|
-| Microsoft Azure | [Azure Investigation Guides](Azure%20Security%20Investigations/Guides/) |
-| Amazon Web Services | [AWS Investigation Guides](AWS%20Security%20Investigations/Guides/) |
-| Google Cloud | [GCP Investigation Guides](GCP%20Security%20Investigations/Guides/) |
-| Infrastructure Security Operations | [Infrastructure Security Operations](Infrastructure%20Security%20Operations/) |
-
-### Learning Approach
-
-Across each platform, I focus on understanding:
-
-1. What object, service, or data source I am investigating.
-2. Which interface is appropriate for retrieving or analyzing the information.
-3. What service or API exists underneath that interface.
-4. How to inspect and understand the raw information before filtering it.
-5. How different resources, identities, permissions, and events relate to one another.
-6. How to document the investigation in a repeatable and understandable way.
-
-> **Learning Goal:** Use each investigation as an opportunity to improve both security investigation skills and familiarity with the administrative and investigative interfaces available within each platform.
+These investigations document **method and reasoning**. Environment-specific identifiers, tenant and subscription IDs, object and group IDs, usernames, and resource names are redacted from public evidence.
