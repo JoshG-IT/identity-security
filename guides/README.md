@@ -1,6 +1,12 @@
-# Investigation Guides
+# Guides
 
-Interface references used across the cases in this repository.
+References used across the cases in this repository.
+
+## Methodology
+
+| Guide | Covers |
+|---|---|
+| [Identity Attack Paths](identity-attack-paths.md) | Common paths through identity infrastructure, what each requires, and what evidence each leaves |
 
 ## Microsoft Azure
 
