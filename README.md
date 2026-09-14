@@ -24,13 +24,13 @@ Each case includes sanitized evidence, methodology, technical analysis, the comm
 | Case | Name | Type | Environment | Access | Key Finding |
 |---|---|---|---|---|---|
 | **IAM-AZ-001** | [Operation Dead Deploy](cases/IAM-AZ-001-operation-dead-deploy/) | Analysis | Azure | Read-only | Azure Policy detected the naming violation correctly; the control was assigned in Audit mode, so non-compliance was recorded rather than blocked |
-| **IAM-AZ-002** | [The Stolen Identity](cases/IAM-AZ-002-the-stolen-identity/) | Analysis | Azure | Read-only | Pending |
+| **IAM-AZ-002** | [The Stolen Identity](cases/IAM-AZ-002-the-stolen-identity/) | Analysis | Azure | Read-only | Stale app ownership turned a stolen user session into application-level persistence surviving password reset, session revocation, and MFA |
 
 ---
 
 ## Skills Demonstrated
 
-`Azure CLI` · `Azure PowerShell` · `Microsoft Graph` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Active Directory` · `Group Policy` · `LDAP` · `Root Cause Analysis`
+`Azure CLI` · `Azure PowerShell` · `Microsoft Graph` · `App Registrations` · `Service Principals` · `OAuth 2.0` · `Graph Application Permissions` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Active Directory` · `Group Policy` · `LDAP` · `Root Cause Analysis`
 
 ---
 
