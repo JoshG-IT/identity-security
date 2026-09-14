@@ -3,6 +3,8 @@
 
 This document explains the identity and OAuth mechanics behind the investigation without reproducing challenge answers.
 
+> **Data handling:** Application display names, custom scope names, tenant identifiers, object IDs, and challenge values are replaced with placeholders. Publicly documented Microsoft identifiers, such as the Microsoft Graph application ID and Microsoft Graph permission IDs, are retained because they are published by Microsoft and are necessary to explain the resolution technique.
+
 ---
 
 ## 1. Application Registration vs. Service Principal
@@ -25,14 +27,15 @@ A useful mental model is:
 ```text
 App Registration
 "What is this application?"
-        ↓
+        |
+        v
 Service Principal
 "What identity represents it in this tenant?"
 ```
 
 The same `appId` can be used to correlate an app registration with its corresponding service principal, while each directory object has its own object ID.
 
-This distinction became important during the Pivot stage because the owner of the legacy application was not merely another app-registration object. The returned owner object was a **service principal** associated with `Mad-Hat-Labs-App`.
+This distinction became important during the Pivot stage because the owner of the legacy application was not merely another app-registration object. The returned owner object was a **service principal** associated with `<ROGUE-APP-NAME>`.
 
 ---
 
@@ -50,13 +53,17 @@ Conceptually:
 
 ```text
 User enters credentials
-        ↓
+        |
+        v
 User completes MFA
-        ↓
+        |
+        v
 Authenticated session established
-        ↓
+        |
+        v
 Session stolen
-        ↓
+        |
+        v
 Attacker inherits MFA-satisfied session context
 ```
 
@@ -84,13 +91,16 @@ could miss a dangerous application owner.
 The investigation later confirmed a second ownership relationship:
 
 ```text
-Mad-Hat-Labs-App
-        ↓
+<ROGUE-APP-NAME>
+        |
+        v
 Service Principal
-        ↓
+        |
+        v
 Owner of
-        ↓
-Mad-Hat-Legacy-Sync-Service
+        |
+        v
+<LEGACY-APP-NAME>
 ```
 
 This is why application ownership can act like a **shadow administrative path**.
@@ -109,11 +119,14 @@ Conceptually:
 Client ID
 +
 Client Secret
-        ↓
+        |
+        v
 Token request
-        ↓
+        |
+        v
 Service principal authentication
-        ↓
+        |
+        v
 Application permissions
 ```
 
@@ -157,26 +170,26 @@ The investigation therefore resolved those GUIDs against the Microsoft Graph ser
 
 ### Microsoft Graph Resource
 
-Microsoft Graph uses the well-known application ID:
+Microsoft Graph uses a well-known, publicly documented application ID:
 
 ```text
-00000003-0000-0000-c000-000000000000
+<MS-GRAPH-APP-ID>
 ```
 
 ### `Directory.Read.All`
 
-Permission ID:
+Permission ID (publicly documented, redacted here):
 
 ```text
-7ab1d382-f21e-4acd-a863-ba3e13f7da61
+<DIRECTORY-READ-ALL-PERMISSION-ID>
 ```
 
 Resolved through Azure CLI:
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
-  --query "appRoles[?id=='7ab1d382-f21e-4acd-a863-ba3e13f7da61']" `
+  --id <MS-GRAPH-APP-ID> `
+  --query "appRoles[?id=='<DIRECTORY-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
 
@@ -190,18 +203,18 @@ This application permission allows the application identity to read broad direct
 
 ### `User.Read.All`
 
-Permission ID:
+Permission ID (publicly documented, redacted here):
 
 ```text
-df021288-bdef-4463-88db-98f22de89214
+<USER-READ-ALL-PERMISSION-ID>
 ```
 
 Resolved through Azure CLI:
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
-  --query "appRoles[?id=='df021288-bdef-4463-88db-98f22de89214']" `
+  --id <MS-GRAPH-APP-ID> `
+  --query "appRoles[?id=='<USER-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
 
@@ -240,15 +253,20 @@ The permission-resolution process also demonstrated an important investigation t
 
 ```text
 requiredResourceAccess
-        ↓
+        |
+        v
 resourceAppId
-        ↓
+        |
+        v
 Microsoft Graph
-        ↓
+        |
+        v
 resourceAccess[].id
-        ↓
+        |
+        v
 Microsoft Graph service principal appRoles[]
-        ↓
+        |
+        v
 Human-readable application permission
 ```
 
@@ -266,7 +284,8 @@ That changes the persistence model from:
 
 ```text
 One credential
-        ↓
+        |
+        v
 If rotated, access dies
 ```
 
@@ -274,11 +293,14 @@ to:
 
 ```text
 Rogue service principal
-        ↓
+        |
+        v
 Owns legacy application
-        ↓
+        |
+        v
 Can influence application configuration
-        ↓
+        |
+        v
 Can potentially establish fresh credentials
 ```
 
@@ -302,13 +324,17 @@ Conceptually:
 
 ```text
 Legacy application
-        ↓
+        |
+        v
 Exposes delegated scope
-        ↓
+        |
+        v
 Rogue application requests scope
-        ↓
+        |
+        v
 User sees consent prompt
-        ↓
+        |
+        v
 User grants consent
 ```
 
@@ -326,17 +352,23 @@ Simplified flow:
 
 ```text
 Victim already signed in
-        ↓
+        |
+        v
 Rogue app requests delegated scope
-        ↓
+        |
+        v
 Victim accepts consent
-        ↓
+        |
+        v
 Authorization code issued
-        ↓
+        |
+        v
 Browser redirected
-        ↓
+        |
+        v
 Configured redirect URI receives code
-        ↓
+        |
+        v
 Backend exchanges code for token
 ```
 
@@ -360,22 +392,26 @@ The investigation confirmed:
 
 ```text
 consentType: Principal
-resource: Mad-Hat-Legacy-Sync-Service
-scope: Legacy.Sync
+resource: <LEGACY-APP-NAME>
+scope: <CUSTOM-SCOPE-NAME>
 ```
 
 This relationship can be visualized as:
 
 ```text
 User consent
-        ↓
+        |
+        v
 Rogue service principal
-        ↓
+        |
+        v
 OAuth2PermissionGrant
-        ↓
+        |
+        v
 Legacy application
-        ↓
-Legacy.Sync
+        |
+        v
+<CUSTOM-SCOPE-NAME>
 ```
 
 The significant point is that consent creates a persistent authorization relationship.
@@ -445,13 +481,17 @@ In this investigation:
 
 ```text
 Legacy application
-        ↓
+        |
+        v
 Trusted / privileged application identity
-        ↓
+        |
+        v
 Rogue application obtains delegated access path
-        ↓
+        |
+        v
 Victim consents
-        ↓
+        |
+        v
 Trusted application relationship is abused
 ```
 
@@ -464,35 +504,44 @@ The danger comes from the trusted application's existing authority and the attac
 ```text
 1. ENTRY
 Phished user completes MFA
-        ↓
+        |
+        v
 Authenticated session stolen
 
 2. ESCALATE
 Legacy app ownership abused
-        ↓
+        |
+        v
 Long-lived client secret established
-        ↓
+        |
+        v
 Application-level authentication
 
 3. PIVOT
 Rogue app created
-        ↓
+        |
+        v
 Rogue service principal added as owner
-        ↓
+        |
+        v
 Durable administrative path to legacy app
 
 4. PERSIST
 Legacy app exposes custom delegated scope
-        ↓
+        |
+        v
 Rogue app can request delegated access
 
 5. LOOT
 Victim accepts OAuth consent
-        ↓
+        |
+        v
 OAuth2PermissionGrant created
-        ↓
+        |
+        v
 Authorization response sent to configured redirect URI
-        ↓
+        |
+        v
 Token access
 ```
 
@@ -534,19 +583,26 @@ The effective attack surface is often a relationship graph:
 
 ```text
 User
-↓
+  |
+  v
 App registration
-↓
+  |
+  v
 Service principal
-↓
+  |
+  v
 Owner relationship
-↓
+  |
+  v
 Application permissions
-↓
+  |
+  v
 OAuth scope
-↓
+  |
+  v
 Consent grant
-↓
+  |
+  v
 Redirect URI
 ```
 
