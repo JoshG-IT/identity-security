@@ -135,7 +135,7 @@ I then inspected the rogue application object and its metadata.
 
 ```powershell
 az ad app show `
-  --id <LEGACY-APP-ID> `
+  --id <ROGUE-APP-ID> `
   --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
