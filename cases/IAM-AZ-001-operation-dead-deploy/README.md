@@ -68,6 +68,9 @@ I first reviewed the Azure CLI resource-group command family, then enumerated re
 
 ```powershell
 az group --help
+```
+
+```powershell
 az group list -o table
 ```
 
