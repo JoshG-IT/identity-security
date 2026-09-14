@@ -3,7 +3,7 @@
 
 This file documents the Azure CLI commands used during the investigation.
 
-> **Data handling:** Application IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and challenge values are replaced with placeholders or omitted.
+> **Data handling:** Application display names, custom scope names, application and client IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and challenge values are replaced with placeholders or omitted. Publicly documented Microsoft identifiers, such as the Microsoft Graph application ID and Microsoft Graph permission IDs, are retained because they are published by Microsoft and are required to explain the resolution technique.
 
 ---
 
@@ -18,9 +18,7 @@ az ad app list -o table
 ### Purpose
 
 - Enumerate app registrations visible to the operative account
-- Identify:
-  - `Mad-Hat-Legacy-Sync-Service`
-  - `Mad-Hat-Labs-App`
+- Identify the legacy application and the attacker-created application
 - Obtain the application/client ID needed for deeper inspection
 
 ---
@@ -110,7 +108,7 @@ az ad app owner list `
 
 Inspect the owner relationship on the legacy app registration.
 
-The returned owner object identified the `Mad-Hat-Labs-App` **service principal** as an owner of the legacy application.
+The returned owner object identified the rogue application's **service principal** as an owner of the legacy application.
 
 ### Condensed View
 
@@ -127,9 +125,11 @@ This relationship directly demonstrated the Pivot stage:
 
 ```text
 Rogue application
-        ↓
+        |
+        v
 Service principal
-        ↓
+        |
+        v
 Owner of legacy application
 ```
 
@@ -169,8 +169,8 @@ The raw permission GUID can be resolved against the Microsoft Graph service prin
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
-  --query "appRoles[?id=='7ab1d382-f21e-4acd-a863-ba3e13f7da61']" `
+  --id <MS-GRAPH-APP-ID> `
+  --query "appRoles[?id=='<DIRECTORY-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
 
@@ -180,22 +180,22 @@ Result:
 Directory.Read.All
 ```
 
-Public Microsoft identifiers:
+Microsoft Graph identifiers (publicly documented, redacted here):
 
 ```text
 Microsoft Graph App ID:
-00000003-0000-0000-c000-000000000000
+<MS-GRAPH-APP-ID>
 
 Directory.Read.All application permission ID:
-7ab1d382-f21e-4acd-a863-ba3e13f7da61
+<DIRECTORY-READ-ALL-PERMISSION-ID>
 ```
 
 ### Resolve `User.Read.All`
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
-  --query "appRoles[?id=='df021288-bdef-4463-88db-98f22de89214']" `
+  --id <MS-GRAPH-APP-ID> `
+  --query "appRoles[?id=='<USER-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
 
@@ -205,14 +205,14 @@ Result:
 User.Read.All
 ```
 
-Public Microsoft identifiers:
+Microsoft Graph identifiers (publicly documented, redacted here):
 
 ```text
 Microsoft Graph App ID:
-00000003-0000-0000-c000-000000000000
+<MS-GRAPH-APP-ID>
 
 User.Read.All application permission ID:
-df021288-bdef-4463-88db-98f22de89214
+<USER-READ-ALL-PERMISSION-ID>
 ```
 
 ### Investigation Significance
@@ -282,8 +282,8 @@ The result showed:
 
 ```text
 consentType: Principal
-resourceDisplayName: Mad-Hat-Legacy-Sync-Service
-scope: Legacy.Sync
+resourceDisplayName: <LEGACY-APP-NAME>
+scope: <CUSTOM-SCOPE-NAME>
 ```
 
 ### Investigation Significance
@@ -294,12 +294,15 @@ It proved that consent resulted in a persistent delegated grant:
 
 ```text
 Rogue application / service principal
-        ↓
+        |
+        v
 OAuth2PermissionGrant
-        ↓
+        |
+        v
 Legacy application
-        ↓
-Legacy.Sync
+        |
+        v
+<CUSTOM-SCOPE-NAME>
 ```
 
 ---
@@ -364,23 +367,32 @@ The following patterns were useful while inspecting unfamiliar application objec
 
 ```text
 az ad app list
-        ↓
+        |
+        v
 Identify relevant applications
-        ↓
+        |
+        v
 az ad app show
-        ↓
+        |
+        v
 Inspect application objects
-        ↓
+        |
+        v
 Query specific properties
-        ↓
+        |
+        v
 Validate ownership relationship
-        ↓
+        |
+        v
 Review requested permissions
-        ↓
+        |
+        v
 Inspect exposed API scope
-        ↓
+        |
+        v
 Inspect redirect URI configuration
-        ↓
+        |
+        v
 Confirm OAuth2PermissionGrant
 ```
 
