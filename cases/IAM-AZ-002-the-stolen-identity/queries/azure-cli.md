@@ -137,7 +137,9 @@ Application ownership created a persistence path that could survive rotation of 
 
 ---
 
-## 6. Review Requested API Permissions
+## 6. Review and Resolve Microsoft Graph Application Permissions
+
+First, inspect the API permissions requested by the legacy application.
 
 ```powershell
 az ad app show `
@@ -147,7 +149,11 @@ az ad app show `
 
 ### Purpose
 
-Inspect the APIs and permission types requested by the legacy application.
+Identify:
+
+- the resource API being requested,
+- each permission GUID,
+- and whether each permission is an application permission or delegated permission.
 
 The Microsoft Graph resource entry contained two `resourceAccess` objects with:
 
@@ -155,14 +161,70 @@ The Microsoft Graph resource entry contained two `resourceAccess` objects with:
 "type": "Role"
 ```
 
-`Role` in this context represents a Microsoft Graph **application permission**, not a user or Entra directory-role assignment.
+In `requiredResourceAccess`, `Role` represents an **application permission / app role**. It does not represent a user or an Entra directory-role assignment.
 
-The investigation identified:
+### Resolve `Directory.Read.All`
+
+The raw permission GUID can be resolved against the Microsoft Graph service principal's `appRoles` collection:
+
+```powershell
+az ad sp show `
+  --id 00000003-0000-0000-c000-000000000000 `
+  --query "appRoles[?id=='7ab1d382-f21e-4acd-a863-ba3e13f7da61']" `
+  -o table
+```
+
+Result:
+
+```text
+Directory.Read.All
+```
+
+Public Microsoft identifiers:
+
+```text
+Microsoft Graph App ID:
+00000003-0000-0000-c000-000000000000
+
+Directory.Read.All application permission ID:
+7ab1d382-f21e-4acd-a863-ba3e13f7da61
+```
+
+### Resolve `User.Read.All`
+
+```powershell
+az ad sp show `
+  --id 00000003-0000-0000-c000-000000000000 `
+  --query "appRoles[?id=='df021288-bdef-4463-88db-98f22de89214']" `
+  -o table
+```
+
+Result:
+
+```text
+User.Read.All
+```
+
+Public Microsoft identifiers:
+
+```text
+Microsoft Graph App ID:
+00000003-0000-0000-c000-000000000000
+
+User.Read.All application permission ID:
+df021288-bdef-4463-88db-98f22de89214
+```
+
+### Investigation Significance
+
+The legacy application requested these Microsoft Graph **application permissions**:
 
 - `Directory.Read.All`
-- `User.ReadWrite.All`
+- `User.Read.All`
 
-These permissions increased the potential directory-level blast radius of the compromised application.
+Resolving the permission GUIDs directly against Microsoft Graph confirmed what the otherwise opaque `resourceAccess[].id` values represented.
+
+Because both entries were application permissions, the effective permission belonged to the application identity/service principal rather than depending on the permissions of the originally compromised user's interactive session.
 
 ---
 
