@@ -178,14 +178,35 @@ The output showed Microsoft Graph as the target resource and two `resourceAccess
 "type": "Role"
 ```
 
-These entries represent Microsoft Graph **application permissions**, not users or Entra directory-role assignments. In this scenario, the permissions were:
+In this context, `Role` represents a Microsoft Graph **application permission**, not a user or Entra directory-role assignment.
+
+To resolve the permission GUIDs into human-readable names, I queried the Microsoft Graph service principal's `appRoles` collection.
+
+```powershell
+az ad sp show `
+  --id <RESOURCE-APP-ID> `
+  --query "appRoles[?id=='<PERMISSION-ID>']" `
+  -o table
+```
+
+The first permission resolved to `Directory.Read.All`.
+
+> ![Directory.Read.All Application Permission](evidence/06a-directory-read-all.png)
+
+The second permission resolved to `User.Read.All`.
+
+> ![User.Read.All Application Permission](evidence/06b-user-read-all.png)
+
+The legacy application therefore requested these Microsoft Graph application permissions:
 
 - `Directory.Read.All`
-- `User.ReadWrite.All`
+- `User.Read.All`
 
-Those permissions increased the potential blast radius because the legacy application could operate with directory-level privileges independently of the originally compromised user's interactive session.
+Resolving the GUIDs directly against Microsoft Graph confirmed that both entries were **application permissions** assigned to an application identity rather than delegated user scopes.
 
-**What I concluded:** the attacker-created application's service principal was explicitly assigned as an owner of the legacy application, creating a persistence path that could survive rotation of the original secret while preserving access to an application with powerful directory permissions.
+These permissions increased the potential blast radius because the legacy application could perform directory reads independently of the originally compromised user's interactive session.
+
+**What I concluded:** the attacker-created application's service principal was explicitly assigned as an owner of the legacy application, creating a persistence path that could survive rotation of the original secret while preserving control of an application with broad Microsoft Graph directory-read permissions.
 
 ---
 
