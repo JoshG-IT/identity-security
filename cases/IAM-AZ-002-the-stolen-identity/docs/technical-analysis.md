@@ -137,7 +137,7 @@ This matters because user-focused containment actions do not automatically remov
 
 ## 5. Microsoft Graph Application Permissions
 
-The legacy application's `requiredResourceAccess` configuration referenced Microsoft Graph and contained permission entries where:
+The legacy application's `requiredResourceAccess` configuration referenced Microsoft Graph and contained two permission entries where:
 
 ```json
 "type": "Role"
@@ -147,18 +147,110 @@ In this context, `Role` means an **application permission / app role**.
 
 It does not mean:
 
-- a human user
-- an Entra directory role assignment
-- two separate users
+- a human user,
+- an Entra directory-role assignment,
+- or two separate users.
 
-The investigation identified the following Microsoft Graph application permissions:
+The raw `requiredResourceAccess` data did not initially expose friendly permission names. It exposed the Microsoft Graph resource App ID and permission GUIDs.
+
+The investigation therefore resolved those GUIDs against the Microsoft Graph service principal's `appRoles` collection.
+
+### Microsoft Graph Resource
+
+Microsoft Graph uses the well-known application ID:
+
+```text
+00000003-0000-0000-c000-000000000000
+```
+
+### `Directory.Read.All`
+
+Permission ID:
+
+```text
+7ab1d382-f21e-4acd-a863-ba3e13f7da61
+```
+
+Resolved through Azure CLI:
+
+```powershell
+az ad sp show `
+  --id 00000003-0000-0000-c000-000000000000 `
+  --query "appRoles[?id=='7ab1d382-f21e-4acd-a863-ba3e13f7da61']" `
+  -o table
+```
+
+Result:
+
+```text
+Directory.Read.All
+```
+
+This application permission allows the application identity to read broad directory data.
+
+### `User.Read.All`
+
+Permission ID:
+
+```text
+df021288-bdef-4463-88db-98f22de89214
+```
+
+Resolved through Azure CLI:
+
+```powershell
+az ad sp show `
+  --id 00000003-0000-0000-c000-000000000000 `
+  --query "appRoles[?id=='df021288-bdef-4463-88db-98f22de89214']" `
+  -o table
+```
+
+Result:
+
+```text
+User.Read.All
+```
+
+This application permission allows the application identity to read user profile information across the directory.
+
+### Why This Matters
+
+The confirmed Microsoft Graph application permissions were:
 
 - `Directory.Read.All`
-- `User.ReadWrite.All`
+- `User.Read.All`
 
-These permissions matter because application permissions are exercised by the service principal itself rather than being limited to the permissions of an interactive user.
+These permissions are exercised by the **service principal/application identity**, not by borrowing the permissions of an interactive user.
 
-This increased the potential blast radius of control over the legacy application.
+That is important because the attack had already shifted from:
+
+```text
+Compromised human session
+```
+
+to:
+
+```text
+Application identity
+```
+
+Once the attacker established durable control over the legacy application's credentials and ownership, the application's own permissions became part of the attacker's potential blast radius.
+
+The permission-resolution process also demonstrated an important investigation technique:
+
+```text
+requiredResourceAccess
+        ↓
+resourceAppId
+        ↓
+Microsoft Graph
+        ↓
+resourceAccess[].id
+        ↓
+Microsoft Graph service principal appRoles[]
+        ↓
+Human-readable application permission
+```
 
 ---
 
@@ -470,7 +562,7 @@ This investigation suggests several useful detection targets for a future securi
 - unusually long credential expiration
 - new application owner added
 - service principal added as an application owner
-- new high-privilege Microsoft Graph application permission
+- new broad Microsoft Graph application permission
 - new exposed API scope
 - new or modified redirect URI
 - new OAuth consent grant
