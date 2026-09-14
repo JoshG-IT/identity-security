@@ -88,7 +88,7 @@ I then inspected the legacy application object and reviewed its internal notes m
 ```powershell
 az ad app show `
   --id <LEGACY-APP-ID> `
-  -o json
+  --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
 The notes documented that the initial compromise began with a phished user and an authenticated session obtained after MFA had already been satisfied.
@@ -135,8 +135,8 @@ I then inspected the rogue application object and its metadata.
 
 ```powershell
 az ad app show `
-  --id <ROGUE-APP-ID> `
-  -o json
+  --id <LEGACY-APP-ID> `
+  --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
 The rogue application's metadata tied it to the persistence chain.
@@ -150,7 +150,7 @@ I queried the **Owners** collection of the legacy application.
 ```powershell
 az ad app owner list `
   --id <LEGACY-APP-ID> `
-  --query "[].{Owner:displayName,Type:servicePrincipalType}" `
+  --query "[].{Name:displayName,Id:id,CreatedDateTime:createdDateTime}" `
   -o table
 ```
 
