@@ -189,9 +189,9 @@ The JSON showed:
 
 ## 6. Policy Assignment
 
-The policy definition established the rule. The assignment determines where the rule is applied and which effect is supplied at that scope, so I listed the assignments in effect at the resource group.
+The policy definition established the rule. The assignment determines where the rule is applied, so I listed the assignments in force at the resource group.
 
-I used `list` with `--filter "atScope()"` rather than `show`. `show` targets an assignment at one exact scope. `atScope()` returns every assignment in force at the given scope, including assignments applied higher up and inherited downward, which is how a subscription-level assignment governing this resource group surfaces from a resource-group query.
+I used `list` with `--filter "atScope()"` rather than `show`. `show` targets an assignment at one exact scope. `atScope()` returns every assignment in force at the given scope, including assignments applied higher up and inherited downward, which is how an assignment governing this resource group surfaces from a resource-group query.
 
 ```powershell
 az policy assignment list `
@@ -200,40 +200,35 @@ az policy assignment list `
   -o json
 ```
 
-The assignment returned:
-
-- Display name: `Naming Convention`
-- Definition type: `Policy`
-- Policy enforcement: `Default`
-- Parameter name: `Effect`
-- Parameter value: `Audit`
+The full response is a large JSON object per assignment. The fields that identified the relevant assignment were `displayName` and `description`.
 
 > ![Policy Assignment CLI](evidence/07-policy-assignment-cli.png)
 
-**What I concluded:** the assignment supplied an `Audit` effect, which explains why the non-compliant resource group was recorded rather than blocked.
+The same projection can be isolated with JMESPath:
+
+```powershell
+az policy assignment list `
+  -g <RESOURCE_GROUP> `
+  --filter "atScope()" `
+  --query "[].{DisplayName:displayName, Description:description}" `
+  -o table
+```
+
+**What I concluded:** the naming policy was assigned and in force over this resource group, confirming the rule identified in Stage 5 was the one that produced the `NonCompliant` evaluation in Stage 4. Combined with the effective action of `audit` returned by policy state, the control was applied and working as configured, but configured to record rather than prevent.
 
 ---
 
 # What Broke / What Surprised Me
 
-The most useful lesson was that the Azure Portal presents policy compliance as a single workflow, while Azure CLI exposes separate Azure Policy objects that have to be correlated manually.
+The finding that stood out was that nothing was broken.
 
-```text
-Policy Definition
-"What is the rule?"
-        |
-        v
-Policy Assignment
-"Where and how is it applied?"
-        |
-        v
-Policy State
-"What happened when Azure evaluated the resource?"
-```
+A non-compliant resource was created, a governance control detected it, and the compliance record was written correctly. Every component performed exactly as configured. The violation still reached production state, and the control that caught it never had the authority to stop it.
 
-Each object is addressed differently. The definition is addressed by name, state is queried by scope, and the assignment exists at a specific scope. Reproducing a single Portal view through the CLI required understanding which object held which piece of the answer, and addressing each one correctly.
+That gap is easy to miss from a compliance view. A dashboard showing a policy as active and a resource as non-compliant looks like governance working. It is governance observing. The difference lives in a single parameter on the assignment, and until that parameter is read, detection and enforcement are indistinguishable from the outside.
 
-That correlation work is what made the root cause legible. The compliance result alone showed the violation was detected. Only the assignment explained why detection did not become prevention.
+The same pattern applies beyond this scenario. An `Audit`-mode control produces evidence, satisfies an audit question about whether a policy exists, and generates a compliance signal, all without changing what anyone is able to deploy. A control in that state can remain in place for years while the organisation believes a rule is being enforced.
+
+The practical lesson is that confirming a control exists is not the same as confirming it acts. A governance review has to read the effect in force at the scope, not just the presence of the policy.
 
 ---
 
