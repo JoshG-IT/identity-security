@@ -24,19 +24,23 @@ This prevented current-state evidence from being confused with deployment-time e
 
 ```text
 --help
-↓
+  |
+  v
 learn available commands/options
 
 list
-↓
+  |
+  v
 discover objects
 
 show
-↓
+  |
+  v
 inspect one known object
 
 --query
-↓
+  |
+  v
 reduce JSON to relevant evidence
 ```
 
@@ -138,13 +142,17 @@ Policy-state projection used during the investigation:
 ```text
 Policy Definition
 Defines the rule
-        ↓
+        |
+        v
 Policy Assignment
 Applies the rule to a scope and supplies configuration
-        ↓
+        |
+        v
 Policy State
 Records the evaluation result
 ```
+
+Each object is addressed differently. A definition is addressed by name, state is queried by scope, and an assignment exists at a specific scope. Matching the command to the object, and the object to its scope, determines whether a request returns what you expect.
 
 ---
 
@@ -161,6 +169,8 @@ Compliance        = NonCompliant
 ActionPerPolicy   = audit
 Location          = eastus
 ```
+
+Policy state answers what happened during evaluation. It does not by itself explain what the control was configured to do about it.
 
 ---
 
@@ -194,58 +204,47 @@ type == Microsoft.Resources/subscriptions/resourceGroups
 name notLike rg-*
 ```
 
+The definition declares which effects are permitted and which is the default. It does not determine which effect is actually in force at a given scope.
+
 ---
 
-## 10. Azure PowerShell Validation
+## 10. Policy Assignment
 
 ```powershell
-Get-AzPolicyDefinition -Name <POLICY_DEFINITION_ID>
+az policy assignment list `
+  -g <RESOURCE_GROUP> `
+  --filter "atScope()" `
+  -o json
 ```
 
-The PowerShell result confirmed the same custom definition and exposed:
+Result:
 
 ```text
-DisplayName
-Mode
-PolicyType
-Version
+displayName        = Naming Convention
+enforcementMode    = Default
+parameters.Effect  = Audit
 ```
+
+The assignment is where the definition meets a scope and receives its parameter values. It is the object that answers the question the investigation was actually asking.
+
+```text
+Definition
+"Audit, Deny, and Disabled are permitted; Audit is the default"
+        |
+        v
+Assignment
+"At this scope, Effect = Audit"
+        |
+        v
+State
+"This resource group was evaluated and found NonCompliant"
+```
+
+Reading only the definition would have shown that `Deny` was available and left the impression that enforcement was possible. Reading only the state would have shown the violation without explaining the outcome. The assignment supplied the missing link.
 
 ---
 
-## 11. RBAC Boundary
-
-```powershell
-az policy assignment show `
-  --name <POLICY_ASSIGNMENT_NAME>
-```
-
-Observed failure:
-
-```text
-AuthorizationFailed
-Microsoft.Authorization/policyAssignments/read
-```
-
-This demonstrated an authorization boundary rather than a CLI syntax error.
-
-The Reader identity could:
-
-```text
-read policy state
-read the custom policy definition
-identify the assignment relationship
-```
-
-but could not:
-
-```text
-directly read the subscription-level assignment object
-```
-
----
-
-## 12. Policy Effect Interpretation
+## 11. Policy Effect Interpretation
 
 | Effect | Behavior |
 |---|---|
@@ -255,7 +254,7 @@ directly read the subscription-level assignment object
 
 ---
 
-## 13. Technical Takeaway
+## 12. Technical Takeaway
 
 The investigation required correlation of:
 
