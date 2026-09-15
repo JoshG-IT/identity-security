@@ -108,7 +108,20 @@ The same result also exposed the resource tags, including `cost-center`, `enviro
 
 ## 3. ARM Deployment Reconstruction
 
-I then moved from **current state** to **deployment history**.
+I moved from **current state** to **deployment history**.
+
+### Deployment history
+
+```powershell
+az deployment group list `
+  -g <RESOURCE_GROUP> `
+  -o table
+```
+
+The record showed a successful **Incremental** deployment with its timestamp, and gave me the deployment name needed to inspect it directly.
+
+> ![Deployment History](evidence/04-deployment-history.png)
+> *Highlighted: deployment name, state, and timestamp.*
 
 ### Deployment parameters
 
@@ -119,27 +132,12 @@ az deployment group show `
   --query properties.parameters
 ```
 
-The deployment parameters included:
-
-- `internFlag`
-- `location`
-- `operativesGroupId`
+The parameters passed at deployment time included `internFlag`, `location`, and `operativesGroupId`.
 
 > ![Deployment Parameters](evidence/03-deployment-parameters.png)
+> *Highlighted: the `internFlag` parameter value.*
 
-### Deployment history
-
-```powershell
-az deployment group list `
-  -g <RESOURCE_GROUP> `
-  -o table
-```
-
-The deployment record showed a successful **Incremental** deployment and provided the deployment timestamp.
-
-> ![Deployment History](evidence/04-deployment-history.png)
-
-**What I concluded:** ARM deployment history provided a traceable provisioning record separate from the resource's current-state inventory.
+**What I concluded:** ARM deployment history provided a provisioning record separate from current-state inventory, and the deployment's input parameters identified who the environment was provisioned for.
 
 ---
 
