@@ -193,26 +193,17 @@ The policy definition established the rule. The assignment determines where the 
 
 I used `list` with `--filter "atScope()"` rather than `show`. `show` targets an assignment at one exact scope. `atScope()` returns every assignment in force at the given scope, including assignments applied higher up and inherited downward, which is how an assignment governing this resource group surfaces from a resource-group query.
 
-```powershell
-az policy assignment list `
-  -g <RESOURCE_GROUP> `
-  --filter "atScope()" `
-  -o json
-```
-
-The full response is a large JSON object per assignment. The fields that identified the relevant assignment were `displayName` and `description`.
-
-> ![Policy Assignment CLI](evidence/07-policy-assignment-cli.png)
-
-The same projection can be isolated with JMESPath:
+Each assignment returns a large object, so I projected to the two fields that identify it.
 
 ```powershell
 az policy assignment list `
   -g <RESOURCE_GROUP> `
   --filter "atScope()" `
-  --query "[].{DisplayName:displayName, Description:description}" `
+  --query "[].{DisplayName:displayName,Description:description}" `
   -o table
 ```
+
+> ![Policy Assignment CLI](evidence/07-policy-assignment-cli.png)
 
 **What I concluded:** the naming policy was assigned and in force over this resource group, confirming the rule identified in Stage 5 was the one that produced the `NonCompliant` evaluation in Stage 4. Combined with the effective action of `audit` returned by policy state, the control was applied and working as configured, but configured to record rather than prevent.
 
