@@ -79,25 +79,20 @@ az policy definition show `
   --name <POLICY_DEFINITION_ID>
 ```
 
-**Question answered:** What rule is Azure evaluating?
+**Question answered:** What rule is Azure evaluating, and which effects does it permit?
 
 ---
 
-## 8. Attempt Direct Assignment Read
+## 8. Read the Policy Assignment
 
 ```powershell
-az policy assignment show `
-  --name <POLICY_ASSIGNMENT_NAME>
+az policy assignment list `
+  -g <RESOURCE_GROUP> `
+  --filter "atScope()" `
+  -o json
 ```
 
-Observed training-tenant result:
-
-```text
-AuthorizationFailed
-Microsoft.Authorization/policyAssignments/read
-```
-
-**Question answered:** Can the Reader identity directly inspect the subscription-level assignment object?
+**Question answered:** At what scope is the rule applied, and which effect is supplied there?
 
 ---
 
@@ -140,3 +135,5 @@ az policy definition show
 az policy assignment show
 = assignment configuration
 ```
+
+Each of these addresses a different object. Matching the command to the object, and the object to its scope, is what determines whether a request returns what you expect.
