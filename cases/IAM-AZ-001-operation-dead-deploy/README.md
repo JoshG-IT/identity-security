@@ -11,9 +11,9 @@
 
 ## Executive Summary
 
-This project documents a read-only Azure governance investigation performed in a live multi-user training tenant.
+A read-only governance investigation in a live multi-user Azure tenant.
 
-The lab itself was designed around the Azure Portal. I completed the entire investigation using **Azure CLI as the sole investigation interface**:
+The environment was built around the Azure Portal. I worked the case entirely through **Azure CLI**:
 
 1. identify the naming outlier,
 2. inspect the deployed resource and its tags,
@@ -102,7 +102,7 @@ The same result also exposed the resource tags, including `cost-center`, `enviro
 
 > ![Resource Inventory Tags](evidence/02-resource-inventory-tags.png)
 
-**What I concluded:** the resource group contained a single Azure Storage account, and the live resource metadata exposed the tags required for Stage 2.
+**What I concluded:** the resource group contained a single Azure Storage account, and the live resource metadata exposed the tags attached at deployment.
 
 ---
 
@@ -205,7 +205,7 @@ az policy assignment list `
 
 > ![Policy Assignment CLI](evidence/07-policy-assignment-cli.png)
 
-**What I concluded:** the naming policy was assigned and in force over this resource group, confirming the rule identified in Stage 5 was the one that produced the `NonCompliant` evaluation in Stage 4. Combined with the effective action of `audit` returned by policy state, the control was applied and working as configured, but configured to record rather than prevent.
+**What I concluded:** the naming policy was assigned and in force over this resource group, confirming the custom definition was the rule producing the `NonCompliant` evaluation returned by policy state. Combined with the effective action of `audit`, the control was applied and working as configured, but configured to record rather than prevent.
 
 ---
 
@@ -299,14 +299,14 @@ For the deeper technical material:
 
 # Data Handling
 
-This repository intentionally documents the **investigation method and reasoning**, not the course answer key.
+This repository documents **method and reasoning**. Environment-specific values are redacted.
 
-The following are redacted from public screenshots:
+Redacted from public evidence:
 
 - challenge values
-- Stage 1 resource-group answer
-- Stage 3 deployment-name answer
-- Stage 4 Description value
+- resource-group name
+- deployment name
+- policy assignment description value
 - usernames and email addresses
 - operative identifiers
 - tenant and subscription IDs
@@ -319,4 +319,4 @@ The following are redacted from public screenshots:
 
 ## Resume Line
 
-> Investigated unexpected Azure resource provisioning in a live multi-user training tenant using Azure CLI, ARM deployment history, and Azure Policy; traced a naming-control violation to an Audit-mode governance configuration that detected non-compliance without preventing deployment.
+> Investigated unexpected Azure resource provisioning in a live multi-user tenant using Azure CLI, ARM deployment history, and Azure Policy; traced a naming-control violation to an Audit-mode governance configuration that detected non-compliance without preventing deployment.
