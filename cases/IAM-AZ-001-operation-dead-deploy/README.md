@@ -102,7 +102,7 @@ The output showed one resource:
 The same result also exposed the resource tags, including `cost-center`, `environment`, `intern-flag`, and `owner`.
 
 > ![Resource Inventory Tags](evidence/02-resource-inventory-tags.png)
-> *Highlighted: the `internFlag` parameter value.*
+> *Informational: the `internFlag` parameter value is highlighted although I was looking for storage information.*
 
 **What I concluded:** the resource group contained a single Azure Storage account, and the live resource metadata exposed the tags attached at deployment.
 
@@ -185,7 +185,7 @@ The JSON showed:
 - resource-group name condition: `notLike: "rg-*"`
 
 > ![Policy Definition CLI](evidence/06-policy-definition-cli.png)
-> *Informational: `Nothing was highlighted.`*
+> *Informational: `Nothing was highlighted` as I was reviewing the policy definition.*
 
 **What I concluded:** the custom policy definition was capable of detecting the resource-group naming violation.
 
