@@ -75,6 +75,7 @@ az group list -o table
 Most resource groups followed an `rg-` naming pattern. One resource group did not follow that pattern and became the investigation target.
 
 > ![Resource Group Discovery](evidence/01-resource-group-discovery.png)
+> *Highlighted: the `Resource Group` that didn't follow the proper naming pattern.*
 
 **What I concluded:** subscription-level inventory and naming-pattern analysis were sufficient to identify the outlier.
 
@@ -101,6 +102,7 @@ The output showed one resource:
 The same result also exposed the resource tags, including `cost-center`, `environment`, `intern-flag`, and `owner`.
 
 > ![Resource Inventory Tags](evidence/02-resource-inventory-tags.png)
+> *Highlighted: the `internFlag` parameter value.*
 
 **What I concluded:** the resource group contained a single Azure Storage account, and the live resource metadata exposed the tags attached at deployment.
 
@@ -121,7 +123,7 @@ az deployment group list `
 The record showed a successful **Incremental** deployment with its timestamp, and gave me the deployment name needed to inspect it directly.
 
 > ![Deployment History](evidence/04-deployment-history.png)
-> *Highlighted: deployment name, state, and timestamp.*
+> *Highlighted: the `deployment` name parameter value.*
 
 ### Deployment parameters
 
@@ -135,7 +137,9 @@ az deployment group show `
 The parameters passed at deployment time included `internFlag`, `location`, and `operativesGroupId`.
 
 > ![Deployment Parameters](evidence/03-deployment-parameters.png)
-> *Highlighted: the `internFlag` parameter value.*
+> 
+> *Highlighted: the `value` parameter value under `internFlag`.*
+
 
 **What I concluded:** ARM deployment history provided a provisioning record separate from current-state inventory, and the deployment's input parameters identified who the environment was provisioned for.
 
@@ -155,6 +159,7 @@ az policy state list `
 The result contained multiple policy evaluations. The naming-policy record was `NonCompliant` with an effective action of `audit`.
 
 > ![Policy State CLI](evidence/05-policy-state-cli.png)
+> *Highlighted: the `PolicyName` parameter value.*
 
 **What I concluded:** Azure Policy was evaluating the resource. The violation was being detected rather than ignored.
 
@@ -180,6 +185,7 @@ The JSON showed:
 - resource-group name condition: `notLike: "rg-*"`
 
 > ![Policy Definition CLI](evidence/06-policy-definition-cli.png)
+> *Informational: `Nothing was highlighted.`*
 
 **What I concluded:** the custom policy definition was capable of detecting the resource-group naming violation.
 
@@ -202,6 +208,7 @@ az policy assignment list `
 ```
 
 > ![Policy Assignment CLI](evidence/07-policy-assignment-cli.png)
+> *Highlighted: the `Description` parameter value for the Naming Convention.*
 
 **What I concluded:** the naming policy was assigned and in force over this resource group, confirming the custom definition was the rule producing the `NonCompliant` evaluation returned by policy state. Combined with the effective action of `audit`, the control was applied and working as configured, but configured to record rather than prevent.
 
