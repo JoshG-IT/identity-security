@@ -94,6 +94,8 @@ az policy assignment list `
 
 **Question answered:** At what scope is the rule applied, and which effect is supplied there?
 
+**Why `list` and not `show`:** `show` addresses a single assignment at one exact scope. `--filter "atScope()"` returns every assignment in force at the supplied scope, including assignments created at a parent scope and inherited downward. An assignment applied above the resource group will not appear without it.
+
 ---
 
 # JMESPath Quick Reference
@@ -132,8 +134,8 @@ az policy state list
 az policy definition show
 = policy rule
 
-az policy assignment show
-= assignment configuration
+az policy assignment list --filter "atScope()"
+= assignments in force at a scope, including inherited
 ```
 
 Each of these addresses a different object. Matching the command to the object, and the object to its scope, is what determines whether a request returns what you expect.
