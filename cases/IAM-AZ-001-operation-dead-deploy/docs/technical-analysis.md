@@ -1,5 +1,5 @@
 # Technical Analysis
-## Azure CLI, ARM, Azure Policy, JMESPath, and RBAC
+## Azure CLI, ARM, Azure Policy, and JMESPath
 
 ## 1. Current State vs Deployment History
 
@@ -217,6 +217,8 @@ az policy assignment list `
   -o json
 ```
 
+`show` addresses a single assignment at one exact scope. `list` with the `atScope()` filter returns every assignment in force at the supplied scope, including assignments created at a parent scope and inherited downward. Because the assignment governing this resource group was applied above it, the inherited view was the one that returned it.
+
 Result:
 
 ```text
@@ -272,8 +274,6 @@ Policy state
 Policy definition
         +
 Policy assignment
-        +
-RBAC
 ```
 
 The policy engine behaved as configured. The governance weakness was the use of a detective effect where preventive enforcement would have required `Deny`.
