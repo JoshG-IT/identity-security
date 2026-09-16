@@ -395,8 +395,6 @@ This is a **confused deputy** pattern. The legacy application is a trusted servi
 
 ---
 
----
-
 ## 12. Confused Deputy
 
 A confused deputy is a trusted component with legitimate authority, induced to act on behalf of a party that should not hold that authority.
