@@ -294,7 +294,7 @@ three in isolation gives a misleading answer.
 | Definition permits `Audit`, `Deny`, `Disabled`, defaulting to `Audit` | Prevention is available but not selected by default |
 | Assignment in force at the resource group scope | The rule is applied rather than dormant |
 | Effective action on the evaluation record is `audit` | Non-compliance is recorded and the request proceeds |
-| Temporary Contributor access held at provisioning time | The deployment was authorised to run |
+| Temporary Contributor access held at provisioning time, per the briefing | The deployment was authorised to run |
 | Tags accepted with placeholder values | Ownership metadata existed without carrying ownership |
 
 ## Recommendations
