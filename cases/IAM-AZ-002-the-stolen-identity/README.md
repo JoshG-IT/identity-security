@@ -82,6 +82,7 @@ az ad app list -o table
 The application inventory exposed `Mad-Hat-Legacy-Sync-Service` and provided the application identifier needed for deeper inspection.
 
 > ![Application Inventory - Legacy App](evidence/01-app-inventory-legacy.png)
+> *Highlighted: the `AppId` identifies `Mad-Hat-Legacy-Sync-Service` for deeper inspection.*
 
 I then inspected the legacy application object and reviewed its internal notes metadata.
 
@@ -94,6 +95,8 @@ az ad app show `
 The notes documented that the initial compromise began with a phished user and an authenticated session obtained after MFA had already been satisfied.
 
 > ![Legacy Application Entry Evidence](evidence/02-legacy-app-entry.png)
+> 
+> *Highlighted: the `notes` metadata documents the initial access method associated with the compromised user session.*
 
 **What I concluded:** the attacker did not begin by compromising an Azure resource. The foothold originated from a human identity, and stale ownership of the legacy application turned that user-session compromise into an application-security incident.
 
@@ -112,6 +115,7 @@ az ad app show `
 The credential metadata showed a client secret with an expiration date set near the end of the century.
 
 > ![Legacy Application Client Secret](evidence/03-legacy-client-secret.png)
+> *Highlighted: the `credential metadata` identifies the suspicious client secret, while the 2099 expiration date indicates an effectively long-lived application credential.*
 
 Creating a client secret changed the nature of the compromise. The attacker no longer needed to repeatedly authenticate as the phished user. The application could authenticate programmatically as its service principal through the client credentials flow.
 
@@ -130,6 +134,7 @@ az ad app list -o table
 ```
 
 > ![Application Inventory - Rogue App](evidence/04-app-inventory-rogue.png)
+> *Highlighted: the `AppId` identifies `Mad-Hat-Labs-App` for deeper inspection.*
 
 I then inspected the rogue application object and its metadata.
 
@@ -142,6 +147,8 @@ az ad app show `
 The rogue application's metadata tied it to the persistence chain.
 
 > ![Rogue Application Metadata](evidence/05-rogue-app-metadata.png)
+> 
+> *Highlighted: the rogue application's `notes metadata` associates the application with the persistence activity under investigation.*
 
 ### Ownership Relationship
 
@@ -157,6 +164,7 @@ az ad app owner list `
 The result showed the `Mad-Hat-Labs-App` service principal as an owner of the legacy application.
 
 > ![Rogue Service Principal Owns Legacy App](evidence/05a-rogue-owner-relationship.png)
+> *Evidence: The legacy application's Owners collection identified the `Mad-Hat-Labs-App` service principal as an owner, establishing a direct administrative relationship between the rogue and legacy applications.*
 
 This was the direct evidence connecting the attacker-created application to the legacy application. The relationship meant the attacker did not have to depend on one client secret indefinitely; control through application ownership provided a path to modify the legacy application and establish new credentials.
 
@@ -171,6 +179,7 @@ az ad app show `
 ```
 
 > ![Legacy Application Microsoft Graph Permissions](evidence/06-legacy-graph-permissions.png)
+> *Evidence: The legacy application's requested resource access contained Microsoft Graph entries of type `Role`, indicating application permissions rather than delegated user scopes.*
 
 The output showed Microsoft Graph as the target resource and two `resourceAccess` entries with:
 
@@ -192,10 +201,12 @@ az ad sp show `
 The first permission resolved to `Directory.Read.All`.
 
 > ![Directory.Read.All Application Permission](evidence/06a-directory-read-all.png)
+> *Validation: Resolving the first Microsoft Graph app-role identifier confirmed the `Directory.Read.All` application permission.*
 
 The second permission resolved to `User.Read.All`.
 
 > ![User.Read.All Application Permission](evidence/06b-user-read-all.png)
+> *Validation: Resolving the second Microsoft Graph app-role identifier confirmed the `User.Read.All` application permission.*
 
 The legacy application therefore requested these Microsoft Graph application permissions:
 
@@ -223,6 +234,7 @@ az ad app show `
 The `oauth2PermissionScopes` collection contained a custom delegated scope published by the legacy application.
 
 > ![Legacy Application Exposed API Scope](evidence/07-legacy-api-scope.png)
+> *Highlighted: the API configuration exposes the custom delegated scope `Legacy.Sync`, creating a permission that another application can request on behalf of a user.*
 
 Publishing an API scope allows another application to request delegated access to the legacy application as a protected resource.
 
@@ -247,16 +259,21 @@ az ad app show `
 The output showed multiple redirect URIs, including a normal local-development callback and a second URI associated with the attack flow.
 
 > ![Rogue Application Redirect URIs](evidence/08-rogue-web-redirect-uris.png)
+> *Highlighted: the suspicious `redirect URI` identifies the callback destination associated with the investigated OAuth authorization flow.*
 
 I then followed the OAuth consent flow used by the scenario.
 
 The first consent screen showed the rogue application requesting access associated with the legacy application's exposed API.
 
 > ![OAuth Consent Flow - Step 1](evidence/09-oauth-consent-step-1.png)
+> 
+> *Context: The consent flow showed the `rogue application` requesting delegated access to the `legacy application's` exposed API.*
 
 The second step required the user to explicitly accept the requested permissions.
 
 > ![OAuth Consent Flow - Step 2](evidence/10-oauth-consent-step-2.png)
+> 
+> *Context: The authorization flow required `explicit user consent` before the requested delegated permission could be granted.*
 
 ### OAuth Permission Grant
 
@@ -276,16 +293,19 @@ The result showed:
 - scope: `Legacy.Sync`
 
 > ![OAuth2 Permission Grant](evidence/10a-oauth2-permission-grant.png)
+> *Validation: The OAuth permission grant confirms that `Mad-Hat-Labs-App` received delegated access to `Mad-Hat-Legacy-Sync-Service` through the `Legacy.Sync` scope.*
 
 This proved that the consent flow created an actual delegated authorization relationship between the rogue application and the legacy application's exposed scope.
 
 The scenario then demonstrated successful capture of the authorization response through the configured callback.
 
 > ![Token Capture Demonstration](evidence/11-token-captured.png)
+> *Validation: The configured `OAuth callback` successfully received the authorization response, demonstrating that the `redirect path` was operational.*
 
 Finally, I used CyberChef to URL-decode the redirect data and validate the encoded value carried in the callback.
 
 > ![CyberChef URL Decode](evidence/12-cyberchef-url-decode.png)
+> *Validation: `URL decoding` confirmed the value carried in the `callback` and allowed the authorization response to be inspected in its decoded form.*
 
 The attack path can be summarized as:
 
