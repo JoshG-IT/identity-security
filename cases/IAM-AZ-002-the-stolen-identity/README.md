@@ -164,7 +164,7 @@ az ad app owner list `
 The result showed the `Mad-Hat-Labs-App` service principal as an owner of the legacy application.
 
 > ![Rogue Service Principal Owns Legacy App](evidence/05a-rogue-owner-relationship.png)
-> *Evidence: The legacy application's Owners collection identified the `Mad-Hat-Labs-App` service principal as an owner, establishing a direct administrative relationship between the rogue and legacy applications.*
+> *Evidence: The legacy application's Owners collection identified `Mad-Hat-Labs-App` as an owner, establishing a direct ownership relationship between the rogue and legacy applications.*
 
 This was the direct evidence connecting the attacker-created application to the legacy application. The relationship meant the attacker did not have to depend on one client secret indefinitely; control through application ownership provided a path to modify the legacy application and establish new credentials.
 
@@ -234,7 +234,7 @@ az ad app show `
 The `oauth2PermissionScopes` collection contained a custom delegated scope published by the legacy application.
 
 > ![Legacy Application Exposed API Scope](evidence/07-legacy-api-scope.png)
-> *Highlighted: the API configuration exposes the custom delegated scope `Legacy.Sync`, creating a permission that another application can request on behalf of a user.*
+> *Highlighted: the legacy application's API configuration contains an enabled custom delegated scope, `Legacy.Sync`, establishing an additional OAuth access path.*
 
 Publishing an API scope allows another application to request delegated access to the legacy application as a protected resource.
 
