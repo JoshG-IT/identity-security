@@ -82,7 +82,7 @@ az ad app list -o table
 The application inventory exposed `Mad-Hat-Legacy-Sync-Service` and provided the application identifier needed for deeper inspection.
 
 > ![Application Inventory - Legacy App](evidence/01-app-inventory-legacy.png)
-> *Highlighted: the `AppId` identifies `Mad-Hat-Legacy-Sync-Service` for deeper inspection.*
+> *Context: Application enumeration identified `Mad-Hat-Legacy-Sync-Service` and provided the `AppId` needed for deeper inspection.*
 
 I then inspected the legacy application object and reviewed its internal notes metadata.
 
@@ -134,7 +134,7 @@ az ad app list -o table
 ```
 
 > ![Application Inventory - Rogue App](evidence/04-app-inventory-rogue.png)
-> *Highlighted: the `AppId` identifies `Mad-Hat-Labs-App` for deeper inspection.*
+> *Context: Application enumeration identified `Mad-Hat-Labs-App` and provided the `AppId` needed for deeper inspection.*
 
 I then inspected the rogue application object and its metadata.
 
