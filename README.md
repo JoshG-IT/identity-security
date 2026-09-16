@@ -30,7 +30,7 @@ Each case includes sanitized evidence, methodology, technical analysis, the comm
 
 ## Skills Demonstrated
 
-`Azure CLI` · `Azure PowerShell` · `Microsoft Graph` · `App Registrations` · `Service Principals` · `OAuth 2.0` · `Graph Application Permissions` · `ARM Deployment History` · `Azure Policy` · `Azure RBAC` · `JMESPath` · `Active Directory` · `Group Policy` · `LDAP` · `Root Cause Analysis`
+`Azure CLI` · `JMESPath` · `Microsoft Entra ID` · `App Registrations` · `Service Principals` · `Graph Application Permissions` · `OAuth 2.0` · `OAuth2 Permission Grants` · `Azure Policy` · `Policy Insights` · `ARM Deployment History` · `CyberChef` · `Root Cause Analysis`
 
 ---
 
@@ -78,6 +78,17 @@ Primary focus is **Azure CLI**; the others are used where relevant.
 <!-- new platform sections mirror the blocks above -->
 
 Guides for AWS and Google Cloud are added alongside the first case in those environments.
+
+---
+
+## Environments
+
+These cases are performed in a mix of environments. Each case states which, once, in its scope note, along with the access level held.
+
+| Environment | What the cases rely on |
+|---|---|
+| Multi-user training tenants | Configuration and object state read directly. No timeline is claimed |
+| Environments I built and operate | Object state and event history, including timelines and attribution |
 
 ---
 
