@@ -22,7 +22,7 @@
 <img src="https://img.shields.io/badge/CyberChef-2B5D8C?style=flat-square" alt="CyberChef"/>
 </p>
 
-> **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared tenant are intentionally omitted.
+> **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared tenant are intentionally omitted. This investigation was performed in a live multi-user Azure training tenant with Read-only directory application access, and is not presented as a production customer incident.
 
 ---
 
@@ -61,6 +61,8 @@ Read-only. No application registrations, credentials, permissions, scopes, owner
 ---
 
 # Investigation
+
+**Evidence files are ordered narratively. File numbering may not be strictly sequential within a section.**
 
 ## 1. Entry
 
@@ -180,7 +182,7 @@ Permission names live on the resource's service principal, so I resolved each GU
 
 ```powershell
 az ad sp show `
-  --id <MS-GRAPH-APP-ID> `
+  --id 00000003-0000-0000-c000-000000000000 `
   --query "appRoles[?id=='<PERMISSION-ID>']" `
   -o table
 ```
@@ -196,7 +198,7 @@ I repeated the resolution for the second identifier.
 
 ```powershell
 az ad sp show `
-  --id <MS-GRAPH-APP-ID> `
+  --id 00000003-0000-0000-c000-000000000000 `
   --query "appRoles[?id=='<PERMISSION-ID>']" `
   -o table
 ```
@@ -331,22 +333,22 @@ No single control explains the incident. It exists in the relationship between i
 
 ## Recommendations
 
-| Priority | Recommendation | Reason |
-|---|---|---|
-| High | Revoke unauthorized application credentials | Removes the client-secret persistence mechanism |
-| High | Remove unauthorized application and service principal owners | Breaks the ability to recreate application access |
-| High | Explicitly revoke malicious OAuth consent grants | User containment does not remove delegated grants |
-| High | Remove attacker-controlled redirect URIs | Prevents authorization responses reaching external infrastructure |
-| High | Remove unauthorized exposed API scopes | Eliminates the consent-based access path |
-| High | Review and reduce Graph application permissions | Limits the blast radius of a compromised application |
-| Medium | Audit app-registration Owners lists on a schedule | Ownership functions as a shadow administrative path |
-| High | Disable default user application registration | Any standard user can register an application and becomes its owner automatically. This is the precondition for the pivot stage |
-| Medium | Audit application ownership the way directory role membership is audited | Ownership is an unlogged privilege path outside the usual review scope |
-| Medium | Alert on new application credentials and ownership changes | Detects persistence through credentials or control relationships |
-| Medium | Alert on redirect URI, exposed-scope, and consent changes | Detects OAuth configuration associated with token theft |
-| Medium | Enforce credential-expiration standards | Prevents effectively permanent application secrets |
+| Priority | Recommendation | Owner | Timeline | Reason |
+|---|---|---|---|---|
+| High | Revoke unauthorized application credentials on the legacy application | Identity and Access | 30 days | Removes the client-secret persistence mechanism |
+| High | Remove the rogue service principal as an owner of the legacy application | Identity and Access | 30 days | Breaks the ability to recreate application access |
+| High | Explicitly revoke the OAuth2PermissionGrant from the rogue application to the legacy application's exposed scope | Identity and Access | 30 days | User containment does not remove delegated grants |
+| High | Remove attacker-controlled redirect URIs from the rogue application | Application Owner | 30 days | Prevents authorization responses reaching external infrastructure |
+| High | Remove the unauthorized exposed API scope from the legacy application | Application Owner | 30 days | Eliminates the consent-based access path |
+| High | Review and reduce Microsoft Graph application permissions on the legacy application | Identity and Access | 30 days | Limits the directory-level blast radius of a compromised application |
+| High | Disable default user application registration | Cloud Governance | 30 days | Prevents standard users from registering applications and becoming owners automatically; this is the precondition for the pivot stage |
+| Medium | Audit app-registration Owners lists on a quarterly schedule | Identity and Access | 60 days | Ownership functions as a shadow administrative path and is not included in standard privileged-access reviews |
+| Medium | Audit application ownership mapping and review it with the same rigor as directory role membership | Identity and Access | 60 days | Ownership is an unlogged privilege path outside the usual review scope |
+| Medium | Alert on new application credentials added to app registrations | Security Operations | 60 days | Detects persistence through credentials |
+| Medium | Alert on new application and service principal owner assignments | Security Operations | 60 days | Detects control-plane persistence |
+| Medium | Alert on new or modified redirect URIs, exposed scopes, and OAuth consent grants | Security Operations | 60 days | Detects OAuth configuration associated with token theft |
 
-> Identity incident response has to contain the compromised human identity **and** the affected application identities, credentials, ownership relationships, consent grants, scopes, and redirect URIs. Closing the account and stopping there reports the incident contained while four access paths remain open.
+> Identity incident response has to contain the compromised human identity **and** the affected application identities, credentials, ownership relationships, consent grants, scopes, and redirect URIs. Closing the account and stopping there reports the incident contained while four access paths remain open. A permission grant persists after password reset, session revocation, and MFA enforcement; it requires explicit revocation. Standard containment does not address application-level persistence.
 
 ---
 
@@ -376,5 +378,3 @@ No single control explains the incident. It exists in the relationship between i
 
 - [Technical Analysis](docs/technical-analysis.md) - Entra and OAuth mechanics, permission resolution, attack chain, detection opportunities
 - [Azure CLI Commands](queries/azure-cli.md) - every command used, with purpose
-
----
