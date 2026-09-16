@@ -1,53 +1,48 @@
 # Azure Identity Investigation
 ## The Stolen Identity
 
-> Reconstructed a five-stage OAuth consent-phishing and application-persistence chain in a **live multi-user Azure training tenant**, tracing the attack across two linked Microsoft Entra app registrations with Azure CLI.
+> Reconstructed a five-stage OAuth consent-phishing chain across two linked Microsoft Entra app registrations, tracing a stolen session into durable application-level persistence that standard containment would not remove.
 
 ![Azure Identity Investigation Architecture](diagrams/entra-id-oauth-consent-kill-chain.png)
 
-> **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared training tenant are intentionally omitted.
+<p align="center">
+<img src="https://img.shields.io/badge/IDENTITY_SECURITY-2B5D8C?style=for-the-badge" alt="Identity Security"/>
+<img src="https://img.shields.io/badge/ENTRA_ID-2B5D8C?style=for-the-badge" alt="Entra ID"/>
+<img src="https://img.shields.io/badge/AZURE_CLI-2B5D8C?style=for-the-badge" alt="Azure CLI"/>
+<img src="https://img.shields.io/badge/OAUTH_2.0-2B5D8C?style=for-the-badge" alt="OAuth 2.0"/>
+<img src="https://img.shields.io/badge/READ--ONLY-6E7681?style=for-the-badge" alt="Read-only"/>
+</p>
+
+<p align="center">
+<img src="https://img.shields.io/badge/App_Registrations-2B5D8C?style=flat-square" alt="App Registrations"/>
+<img src="https://img.shields.io/badge/Service_Principals-2B5D8C?style=flat-square" alt="Service Principals"/>
+<img src="https://img.shields.io/badge/Graph_App_Permissions-2B5D8C?style=flat-square" alt="Graph Application Permissions"/>
+<img src="https://img.shields.io/badge/OAuth2_Permission_Grants-2B5D8C?style=flat-square" alt="OAuth2 Permission Grants"/>
+<img src="https://img.shields.io/badge/JMESPath-2B5D8C?style=flat-square" alt="JMESPath"/>
+<img src="https://img.shields.io/badge/CyberChef-2B5D8C?style=flat-square" alt="CyberChef"/>
+</p>
+
+> **Reading this:** the Executive Summary and Findings cover the outcome. The Investigation walks the evidence in the order it was found. Underlying mechanics are in the Technical Drill-Down at the end.
 
 ---
 
 ## Executive Summary
 
-This project documents a read-only Microsoft Entra ID investigation performed in a live multi-user Azure training tenant.
+An attacker reached an Entra tenant through a stolen, MFA-satisfied user session and converted it into application-level access that no longer depended on the compromised user. Working read-only through Azure CLI, I reconstructed five stages on a flagged legacy app registration: a credential set to expire near the end of the century, a second application whose service principal had been added as an owner, a custom exposed API scope, an attacker-controlled redirect URI, and a persisted OAuth consent grant.
 
-The lab itself was designed around the Azure Portal. I extended the investigation by using **Azure CLI as the primary investigation interface** to enumerate app registrations, inspect both applications involved in the incident, validate the ownership relationship between them, review application permissions and credentials, and confirm the OAuth grant created during the consent flow.
+The root cause was identity and application governance drift. Ownership, credentials, permissions, and OAuth configuration had gone unreviewed long enough that a single user compromise could anchor itself in application identities.
 
-The investigation reconstructed five stages:
-
-1. **Entry** - a phished user completed MFA and the resulting authenticated session was stolen.
-2. **Escalate** - ownership of a legacy application was abused to establish long-lived application credentials.
-3. **Pivot** - an attacker-created application's service principal was added as an owner of the legacy application, creating a durable path back into an application with powerful Microsoft Graph permissions.
-4. **Persist** - a custom delegated API scope created an additional OAuth access path.
-5. **Loot** - an attacker-controlled redirect URI and user consent produced an OAuth permission grant and authorization flow capable of delivering access to attacker-controlled infrastructure.
-
-The investigation showed that the incident stopped being only a compromised-user problem once the attacker began abusing application identities. Password resets, session revocation, and stronger MFA would not automatically remove application credentials, ownership relationships, exposed API scopes, redirect URIs, or OAuth consent grants.
-
-The root cause was **identity and application governance drift**: stale ownership, excessive application permissions, long-lived credentials, and unreviewed OAuth configuration allowed a user-session compromise to become durable application-level persistence.
-
-> **Environment disclosure:** This was a live multi-user Azure **training tenant**, not a production environment. Challenge answers and environment-specific identifiers are intentionally excluded from the public write-up.
+Containment aimed at the user would not have closed it. Resetting the password, revoking sessions, and enforcing MFA leave the credential, the ownership relationship, the exposed scope, the redirect URI, and the consent grant untouched.
 
 ---
 
-## Scenario
+## Briefing
 
-The incident briefing stated that an attacker had entered the tenant within the previous 24 hours without exploiting a software vulnerability. The initial foothold came through the identity plane.
+An attacker entered the tenant within the previous 24 hours. No exploit was used against a software vulnerability; access came through the identity plane, and no alerts were raised. The logs showed a sequence of ordinary sign-ins.
 
-A user was phished by a fraudulent sign-in page and completed MFA. The attacker obtained the authenticated session created after MFA had been satisfied. The compromised user had also been left as an owner of a legacy internal connector application, `Mad-Hat-Legacy-Sync-Service`.
+The task was to reconstruct what the attacker did, stage by stage, using only the available read access. Every step was reported to have left evidence on a single app registration the team had flagged as tampered with: `Mad-Hat-Legacy-Sync-Service`, a legacy internal connector application.
 
-That stale ownership relationship gave the attacker a path from a compromised human identity into an application identity with significantly greater capability.
-
-My task was to determine:
-
-- **Who** provided the initial foothold and which application identities became involved?
-- **What** application configuration enabled escalation, persistence, and token harvesting?
-- **When** did the attack occur relative to the incident window?
-- **Where** did the attack artifacts exist across the legacy and rogue app registrations?
-- **Why** would normal user-focused containment fail to completely remove the attacker's access?
-
-The investigation was performed in **observe mode**. No application registrations, credentials, permissions, scopes, owners, or redirect URIs were modified or deleted.
+Read-only. No application registrations, credentials, permissions, scopes, owners, or redirect URIs were modified or deleted.
 
 ---
 
@@ -57,34 +52,30 @@ The investigation was performed in **observe mode**. No application registration
 |---|---|
 | Cloud platform | Microsoft Azure |
 | Identity platform | Microsoft Entra ID |
-| Environment | Live multi-user Azure training tenant |
-| Investigation access | Read-only directory application access |
-| Primary investigation tool | Azure CLI |
+| Environment | Live multi-user Azure tenant |
+| Access level | Read-only directory application access |
+| Investigation interface | Azure CLI |
 | Query/filter language | JMESPath |
-| Primary evidence source | Microsoft Entra app registration and service principal objects |
-| Supporting validation | Microsoft OAuth consent flow |
-| URL decoding | CyberChef |
-| Applications investigated | `Mad-Hat-Legacy-Sync-Service` and `Mad-Hat-Labs-App` |
-| Investigation mode | Read-only |
+| Evidence source | Entra app registration and service principal objects |
 
 ---
 
 # Investigation
 
-## 1. Entry - Compromised Session and Legacy Application
+## 1. Entry
 
-I first enumerated the tenant's app registrations to locate the legacy application identified in the incident briefing.
+The briefing named the flagged application but gave no identifier, so I enumerated the tenant's app registrations to obtain it.
 
 ```powershell
 az ad app list -o table
 ```
 
-The application inventory exposed `Mad-Hat-Legacy-Sync-Service` and provided the application identifier needed for deeper inspection.
+The inventory returned `Mad-Hat-Legacy-Sync-Service` and its application identifier.
 
 > ![Application Inventory - Legacy App](evidence/01-app-inventory-legacy.png)
 > *Context: Application enumeration identified `Mad-Hat-Legacy-Sync-Service` and provided the `AppId` needed for deeper inspection.*
 
-I then inspected the legacy application object and reviewed its internal notes metadata.
+I inspected the application object for configuration and any recorded context.
 
 ```powershell
 az ad app show `
@@ -92,19 +83,18 @@ az ad app show `
   --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
-The notes documented that the initial compromise began with a phished user and an authenticated session obtained after MFA had already been satisfied.
+The `notes` property carried a value written during the incident, confirming the application had been touched.
 
 > ![Legacy Application Entry Evidence](evidence/02-legacy-app-entry.png)
-> 
-> *Highlighted: the `notes` metadata documents the initial access method associated with the compromised user session.*
+> *Highlighted: the `notes` property on the legacy application, redacted. Its presence confirms the application was modified during the incident.*
 
-**What I concluded:** the attacker did not begin by compromising an Azure resource. The foothold originated from a human identity, and stale ownership of the legacy application turned that user-session compromise into an application-security incident.
+**Finding:** the flagged application was confirmed and its identifier obtained. The `notes` property established that it had been modified, but not how. Per the incident briefing, entry came through a phished user whose session was stolen after MFA had been satisfied, which is consistent with the absence of alerts in the sign-in logs.
 
 ---
 
-## 2. Escalate - Long-Lived Client Secret
+## 2. Escalate
 
-I inspected the legacy application's password credentials.
+A stolen session expires. If the attacker intended to persist, a credential on the application is the mechanism that would outlast it, so I inspected the legacy application's password credentials.
 
 ```powershell
 az ad app show `
@@ -112,31 +102,29 @@ az ad app show `
   --query passwordCredentials
 ```
 
-The credential metadata showed a client secret with an expiration date set near the end of the century.
+One client secret was present, with an expiration set near the end of the century.
 
 > ![Legacy Application Client Secret](evidence/03-legacy-client-secret.png)
 > *Highlighted: the `credential metadata` identifies the suspicious client secret, while the 2099 expiration date indicates an effectively long-lived application credential.*
 
-Creating a client secret changed the nature of the compromise. The attacker no longer needed to repeatedly authenticate as the phished user. The application could authenticate programmatically as its service principal through the client credentials flow.
-
-**What I concluded:** the attacker converted temporary access derived from a compromised user session into durable application-level authentication.
+**Finding:** access derived from a compromised user session had been converted into application authentication. The application can authenticate as itself, with no human in the flow.
 
 ---
 
-## 3. Pivot - Rogue Application, Ownership, and Privilege
+## 3. Pivot
 
-A single client secret could eventually be discovered and rotated, so the attacker introduced a second application registration.
-
-I enumerated the app registrations again to identify the attacker-created application, `Mad-Hat-Labs-App`.
+A secret can be rotated. That raised the question of whether anything else held control over the legacy application, so I re-enumerated the tenant's app registrations.
 
 ```powershell
 az ad app list -o table
 ```
 
+The inventory returned a second registration, `Mad-Hat-Labs-App`.
+
 > ![Application Inventory - Rogue App](evidence/04-app-inventory-rogue.png)
 > *Context: Application enumeration identified `Mad-Hat-Labs-App` and provided the `AppId` needed for deeper inspection.*
 
-I then inspected the rogue application object and its metadata.
+I inspected that application object for recorded context.
 
 ```powershell
 az ad app show `
@@ -144,15 +132,12 @@ az ad app show `
   --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
-The rogue application's metadata tied it to the persistence chain.
+Its `notes` property also carried a value written during the incident.
 
 > ![Rogue Application Metadata](evidence/05-rogue-app-metadata.png)
-> 
-> *Highlighted: the rogue application's `notes metadata` associates the application with the persistence activity under investigation.*
+> *Highlighted: the `notes` property on the second registration, redacted. Its presence places this application inside the incident timeline.*
 
-### Ownership Relationship
-
-I queried the **Owners** collection of the legacy application.
+A second application with incident-related metadata is suggestive, not conclusive. A relationship to the legacy application would be, so I queried its Owners collection.
 
 ```powershell
 az ad app owner list `
@@ -161,16 +146,12 @@ az ad app owner list `
   -o table
 ```
 
-The result showed the `Mad-Hat-Labs-App` service principal as an owner of the legacy application.
+The owners list returned the `Mad-Hat-Labs-App` service principal.
 
 > ![Rogue Service Principal Owns Legacy App](evidence/05a-rogue-owner-relationship.png)
 > *Evidence: The legacy application's Owners collection identified `Mad-Hat-Labs-App` as an owner, establishing a direct ownership relationship between the rogue and legacy applications.*
 
-This was the direct evidence connecting the attacker-created application to the legacy application. The relationship meant the attacker did not have to depend on one client secret indefinitely; control through application ownership provided a path to modify the legacy application and establish new credentials.
-
-### Supporting Permission Evidence
-
-I also inspected the legacy application's requested resource access to understand why control of the application mattered.
+Ownership matters in proportion to what the owned application can do, so I inspected the legacy application's requested resource access.
 
 ```powershell
 az ad app show `
@@ -178,52 +159,33 @@ az ad app show `
   --query requiredResourceAccess
 ```
 
+Two Microsoft Graph entries of `"type": "Role"` were returned, identifying them as application permissions rather than delegated user scopes.
+
 > ![Legacy Application Microsoft Graph Permissions](evidence/06-legacy-graph-permissions.png)
 > *Evidence: The legacy application's requested resource access contained Microsoft Graph entries of type `Role`, indicating application permissions rather than delegated user scopes.*
 
-The output showed Microsoft Graph as the target resource and two `resourceAccess` entries with:
-
-```json
-"type": "Role"
-```
-
-In this context, `Role` represents a Microsoft Graph **application permission**, not a user or Entra directory-role assignment.
-
-To resolve the permission GUIDs into human-readable names, I queried the Microsoft Graph service principal's `appRoles` collection.
+The entries carried permission GUIDs rather than names, so I resolved each against the Microsoft Graph service principal's `appRoles` collection.
 
 ```powershell
 az ad sp show `
-  --id <RESOURCE-APP-ID> `
+  --id <MS-GRAPH-APP-ID> `
   --query "appRoles[?id=='<PERMISSION-ID>']" `
   -o table
 ```
 
-The first permission resolved to `Directory.Read.All`.
-
 > ![Directory.Read.All Application Permission](evidence/06a-directory-read-all.png)
 > *Validation: Resolving the first Microsoft Graph app-role identifier confirmed the `Directory.Read.All` application permission.*
-
-The second permission resolved to `User.Read.All`.
 
 > ![User.Read.All Application Permission](evidence/06b-user-read-all.png)
 > *Validation: Resolving the second Microsoft Graph app-role identifier confirmed the `User.Read.All` application permission.*
 
-The legacy application therefore requested these Microsoft Graph application permissions:
-
-- `Directory.Read.All`
-- `User.Read.All`
-
-Resolving the GUIDs directly against Microsoft Graph confirmed that both entries were **application permissions** assigned to an application identity rather than delegated user scopes.
-
-These permissions increased the potential blast radius because the legacy application could perform directory reads independently of the originally compromised user's interactive session.
-
-**What I concluded:** the attacker-created application's service principal was explicitly assigned as an owner of the legacy application, creating a persistence path that could survive rotation of the original secret while preserving control of an application with broad Microsoft Graph directory-read permissions.
+**Finding:** a second application's service principal was an owner of the legacy application. An owner can create new credentials, so control of the legacy application no longer depended on any single secret surviving. Because that application held broad Graph directory permissions, the control carried directory-level reach.
 
 ---
 
-## 4. Persist - Custom Exposed API Scope
+## 4. Persist
 
-I returned to the legacy application and inspected its API configuration.
+Two paths were established: the credential and the ownership relationship. Both are removable by an administrator who finds them. I checked whether the legacy application exposed anything that would create a third.
 
 ```powershell
 az ad app show `
@@ -236,19 +198,13 @@ The `oauth2PermissionScopes` collection contained a custom delegated scope publi
 > ![Legacy Application Exposed API Scope](evidence/07-legacy-api-scope.png)
 > *Highlighted: the legacy application's API configuration contains an enabled custom delegated scope, `Legacy.Sync`, establishing an additional OAuth access path.*
 
-Publishing an API scope allows another application to request delegated access to the legacy application as a protected resource.
-
-That created a second persistence path that did not depend entirely on the original client secret.
-
-**What I concluded:** the attacker established an OAuth-based backup path that could remain useful even if the original application credential was discovered and removed.
+**Finding:** a third path existed, built on user consent rather than a credential. Credential rotation does not touch it.
 
 ---
 
-## 5. Loot - OAuth Consent, Permission Grant, and Token Capture
+## 5. Loot
 
-The final stage centered on the rogue application's redirect URI configuration.
-
-I inspected the rogue application's web settings.
+A published scope is only useful if something requests it and the authorization response reaches infrastructure the attacker controls. I inspected the second application's web configuration.
 
 ```powershell
 az ad app show `
@@ -256,28 +212,22 @@ az ad app show `
   --query web
 ```
 
-The output showed multiple redirect URIs, including a normal local-development callback and a second URI associated with the attack flow.
+Multiple redirect URIs were returned: a standard local-development callback, and a second that did not match that pattern.
 
 > ![Rogue Application Redirect URIs](evidence/08-rogue-web-redirect-uris.png)
 > *Highlighted: the suspicious `redirect URI` identifies the callback destination associated with the investigated OAuth authorization flow.*
 
-I then followed the OAuth consent flow used by the scenario.
-
-The first consent screen showed the rogue application requesting access associated with the legacy application's exposed API.
+To establish what that configuration produced in practice, I followed the consent flow.
 
 > ![OAuth Consent Flow - Step 1](evidence/09-oauth-consent-step-1.png)
-> 
+>
 > *Context: The consent flow showed the `rogue application` requesting delegated access to the `legacy application's` exposed API.*
 
-The second step required the user to explicitly accept the requested permissions.
-
 > ![OAuth Consent Flow - Step 2](evidence/10-oauth-consent-step-2.png)
-> 
+>
 > *Context: The authorization flow required `explicit user consent` before the requested delegated permission could be granted.*
 
-### OAuth Permission Grant
-
-After consent, I queried the grants associated with the rogue application.
+A consent screen is a browser event. Whether it wrote a durable object was a separate question, so I queried the grants held by the second application.
 
 ```powershell
 az ad app permission list-grants `
@@ -286,72 +236,34 @@ az ad app permission list-grants `
   -o json
 ```
 
-The result showed:
-
-- `consentType`: `Principal`
-- resource: `Mad-Hat-Legacy-Sync-Service`
-- scope: `Legacy.Sync`
+The grant returned `consentType: Principal`, resource `Mad-Hat-Legacy-Sync-Service`, scope `Legacy.Sync`.
 
 > ![OAuth2 Permission Grant](evidence/10a-oauth2-permission-grant.png)
 > *Validation: The OAuth permission grant confirms that `Mad-Hat-Labs-App` received delegated access to `Mad-Hat-Legacy-Sync-Service` through the `Legacy.Sync` scope.*
 
-This proved that the consent flow created an actual delegated authorization relationship between the rogue application and the legacy application's exposed scope.
-
-The scenario then demonstrated successful capture of the authorization response through the configured callback.
+The configured callback then received the authorization response.
 
 > ![Token Capture Demonstration](evidence/11-token-captured.png)
 > *Validation: The configured `OAuth callback` successfully received the authorization response, demonstrating that the `redirect path` was operational.*
 
-Finally, I used CyberChef to URL-decode the redirect data and validate the encoded value carried in the callback.
+I URL-decoded the redirect data to inspect the value carried in the callback.
 
 > ![CyberChef URL Decode](evidence/12-cyberchef-url-decode.png)
 > *Validation: `URL decoding` confirmed the value carried in the `callback` and allowed the authorization response to be inspected in its decoded form.*
 
-The attack path can be summarized as:
-
-```text
-Victim already authenticated
-        ↓
-MFA already satisfied
-        ↓
-Rogue application consent request
-        ↓
-Legacy application's exposed API scope
-        ↓
-User accepts consent
-        ↓
-OAuth2PermissionGrant created
-        ↓
-Authorization response
-        ↓
-Attacker-controlled redirect URI
-        ↓
-Token access through the OAuth flow
-```
-
-**What I concluded:** OAuth consent converted the rogue application's requested scope into an actual delegated grant, allowing the attacker to leverage a victim who was already authenticated instead of performing another suspicious interactive user sign-in.
+**Finding:** consent wrote a persistent delegated grant into the directory, and the redirect URI sent the resulting authorization response outside the tenant. The flow required no authentication from the victim, only approval, which is why it produced no suspicious sign-in. This is a **confused deputy** pattern: a trusted application acting on a request it should never have authorized. Nothing in the chain is a vulnerability. Every component behaves as designed.
 
 ---
 
-# What Broke / What Surprised Me
+# What Surprised Me
 
-What surprised me most was how quickly the attack stopped depending on the original phished user.
+How quickly the attack stopped depending on the person who was phished. The stolen session lasted one stage. By the third, an ownership relationship existed that could mint fresh credentials on demand, and the original account was incidental. Containing the human identity would have contained the least durable part of the intrusion.
 
-The initial compromise was a stolen authenticated session, but once the attacker abused ownership of the legacy application, they could establish application credentials and anchor a second attacker-controlled application into the ownership chain. At that point, the incident was no longer solved by treating the user account as the only compromised identity.
+The ownership relationship is the finding most likely to be missed. A privileged-access review that enumerates directory roles returns nothing here, because nobody was granted a role. A service principal was made an owner of an application, which is administrative capability sitting in a place administrative capability is not normally looked for. Ownership is also enumerated per application rather than per identity, so there is no single view that answers what a given service principal owns.
 
-The ownership relationship was especially significant. A review focused only on privileged human directory roles could miss an attacker-controlled service principal that owned a highly privileged application. That ownership relationship provided administrative influence over the application's configuration without looking like a traditional Global Administrator assignment.
+The consent grant was the second. A consent prompt presents as a user-interface event and is easy to treat as one. It writes a durable authorization object that outlives the browser session, the password, and the MFA method that authorized it. Five artifacts persist independently of the user account, and a containment playbook aimed at the account closes none of them.
 
-The OAuth grant was the second major surprise. The consent flow did not merely produce a temporary browser event; it created a persistent delegated authorization object linking the rogue application to the legacy application's exposed scope.
-
-A defender could reset the user's password, revoke every active user session, and strengthen MFA, yet still leave behind:
-
-- the application client secret,
-- the rogue application's ownership relationship,
-- the custom exposed API scope,
-- the attacker-controlled redirect URI,
-- and the OAuth permission grant.
-
-The main lesson was that **identity containment has to include application identities, ownership, credentials, OAuth scopes, redirect URIs, and consent grants**. A user-account containment playbook can succeed against the human account while leaving application-level persistence intact.
+The third was a default. In Entra ID, any standard user can register an application, and whoever registers it becomes its owner automatically. The attacker did not need elevated privilege to create the second application or to own it. That capability was already granted to every user in the tenant, and it is the precondition for the entire pivot stage.
 
 ---
 
@@ -361,48 +273,37 @@ The main lesson was that **identity containment has to include application ident
 
 > **A stale application ownership relationship and excessive trust in a legacy Entra application allowed a compromised user session to expand into durable application-level persistence and OAuth token harvesting.**
 
-The attack succeeded because several individually manageable identity risks had accumulated:
+No single control explains the incident. It exists in the relationship between identities, applications, credentials, permissions, ownership, and consent.
 
-- a compromised authenticated user session,
-- stale ownership of a legacy application,
-- powerful Microsoft Graph application permissions,
-- a long-lived client secret,
-- a second attacker-created application,
-- an attacker-controlled service principal added as an application owner,
-- a custom exposed API scope,
-- an attacker-controlled redirect URI,
-- and a resulting OAuth delegated permission grant.
-
-No single control explained the entire incident. The attack existed in the **relationship between identities, applications, credentials, permissions, ownership, and OAuth consent**.
-
-| Condition / Control | Result |
+| Condition | Result |
 |---|---|
-| MFA completed by the victim | The stolen session already represented an MFA-satisfied authentication |
-| Stale legacy-app ownership | User compromise expanded into control over application configuration |
+| MFA completed by the victim | The stolen session carried an MFA-satisfied claim |
+| Stale application ownership | User compromise expanded into control over application configuration |
 | Long-lived client secret | Created durable application authentication |
-| Powerful Graph application permissions | Increased the directory-level blast radius of the legacy app |
-| Rogue service principal as owner | Created a durable administrative path back into the legacy application |
-| Custom exposed API scope | Created a delegated OAuth access path |
-| Attacker-controlled redirect URI | Directed authorization responses toward attacker-controlled infrastructure |
-| OAuth permission grant | Persisted delegated authorization beyond the original consent interaction |
+| Broad Graph application permissions | Increased the directory-level blast radius |
+| Service principal added as owner | Created a control path that survives credential rotation |
+| Custom exposed API scope | Created a consent-based access path |
+| Attacker-controlled redirect URI | Directed authorization responses outside the tenant |
+| OAuth permission grant | Persisted delegated authorization beyond the consent interaction |
 
 ## Recommendations
 
 | Priority | Recommendation | Reason |
 |---|---|---|
-| High | Revoke and remove unauthorized application credentials | Removes the client-secret persistence mechanism |
-| High | Remove unauthorized application and service principal owners | Breaks the attacker's ability to maintain or recreate application access |
-| High | Explicitly revoke malicious OAuth consent grants | User password and session containment do not automatically remove delegated grants |
-| High | Remove attacker-controlled redirect URIs | Prevents authorization responses from reaching attacker infrastructure |
-| High | Remove unauthorized exposed API scopes | Eliminates the delegated access path created for persistence |
-| High | Review and reduce Microsoft Graph application permissions | Limits the blast radius of a compromised application |
-| Medium | Audit app-registration Owners lists regularly | Application ownership can function as a shadow administrative path |
-| Medium | Restrict who can register applications where business requirements allow | Reduces opportunities to create rogue applications |
+| High | Revoke unauthorized application credentials | Removes the client-secret persistence mechanism |
+| High | Remove unauthorized application and service principal owners | Breaks the ability to recreate application access |
+| High | Explicitly revoke malicious OAuth consent grants | User containment does not remove delegated grants |
+| High | Remove attacker-controlled redirect URIs | Prevents authorization responses reaching external infrastructure |
+| High | Remove unauthorized exposed API scopes | Eliminates the consent-based access path |
+| High | Review and reduce Graph application permissions | Limits the blast radius of a compromised application |
+| Medium | Audit app-registration Owners lists on a schedule | Ownership functions as a shadow administrative path |
+| High | Disable default user application registration | Any standard user can register an application and becomes its owner automatically. This is the precondition for the pivot stage |
+| Medium | Audit application ownership the way directory role membership is audited | Ownership is an unlogged privilege path outside the usual review scope |
 | Medium | Alert on new application credentials and ownership changes | Detects persistence through credentials or control relationships |
 | Medium | Alert on redirect URI, exposed-scope, and consent changes | Detects OAuth configuration associated with token theft |
 | Medium | Enforce credential-expiration standards | Prevents effectively permanent application secrets |
 
-> Identity incident response should contain both the compromised **human identity** and any affected **application identities, credentials, ownership relationships, consent grants, scopes, and redirect URIs**.
+> Identity incident response has to contain the compromised human identity **and** the affected application identities, credentials, ownership relationships, consent grants, scopes, and redirect URIs. Closing the account and stopping there reports the incident contained while four access paths remain open.
 
 ---
 
@@ -410,91 +311,31 @@ No single control explained the entire incident. The attack existed in the **rel
 
 | Question | Answer |
 |---|---|
-| **Who** | A phished user provided the initial foothold; the attacker then operated through a legacy application and an attacker-created application/service principal |
-| **What** | A five-stage OAuth consent-phishing and application-persistence chain |
-| **When** | The incident briefing placed the compromise within the previous 24 hours |
-| **Where** | Microsoft Entra ID across `Mad-Hat-Legacy-Sync-Service` and `Mad-Hat-Labs-App` |
-| **Why** | Stale ownership, excessive application permissions, long-lived credentials, and unreviewed OAuth relationships created durable persistence |
+| **Who** | A phished user provided the foothold; the attacker then operated through a legacy application and a second application registration |
+| **What** | A five-stage OAuth consent-phishing chain ending in a persisted delegated grant |
+| **When** | Within the 24-hour window stated in the briefing |
+| **Where** | Microsoft Entra ID, across `Mad-Hat-Legacy-Sync-Service` and `Mad-Hat-Labs-App` |
+| **Why** | Stale ownership, broad application permissions, long-lived credentials, and unreviewed OAuth configuration created durable persistence |
 
 ---
 
 # What I Learned
 
-- A compromised user session can become an application-identity compromise if the user owns an app registration.
-- MFA does not remove risk from an already-authenticated stolen session.
-- Client secrets allow an attacker to move from human interactive access to programmatic application authentication.
-- `az ad app owner list` can expose service principals that own an application registration.
-- Application ownership can represent a shadow administrative path that will not appear in a simple review of privileged human directory roles.
-- `requiredResourceAccess` exposes the permissions an application requests from resource APIs such as Microsoft Graph.
-- A `resourceAccess` entry with `"type": "Role"` represents an application permission/app role, not a user or directory-role assignment.
-- `az ad app permission list-grants` can expose delegated OAuth authorization relationships created through user consent.
-- Exposed API scopes and redirect URIs are security-sensitive identity configuration, not just developer settings.
-- OAuth consent grants require explicit investigation and revocation during identity incident response.
-- Password resets, session revocation, and MFA enforcement do not automatically remove application credentials, ownership relationships, or OAuth persistence.
-- `az ad app list` and `az ad app show` can expose most of the app-registration evidence needed to reconstruct an Entra application attack.
-- JMESPath is useful for isolating security-relevant properties from large application JSON objects.
-- The overall attack demonstrates a **confused deputy** pattern in which a trusted application can be used to perform actions through access that should not have been authorized.
+- Application ownership is a shadow administrative path. It will not appear in a review of privileged directory roles, because no role was assigned.
+- Application permissions are exercised by the application identity, so they survive containment aimed at the user and are not subject to Conditional Access.
+- Exposed API scopes and redirect URIs are security configuration, not developer settings. The redirect URI determines where authorization codes are delivered.
+- Consent grants persist as directory objects and require explicit revocation. Password resets, session revocation, and MFA enforcement do not remove them.
+- Any standard user can register an application by default and becomes its owner. Application creation is not a privileged action, but application ownership is a privileged position.
 
 ---
 
 # Technical Drill-Down
 
-For the deeper technical material:
-
-- [Technical Analysis](docs/technical-analysis.md)
-- [Azure CLI Commands](queries/azure-cli.md)
-
----
-
-# Tools and Services
-
-- Microsoft Azure
-- Microsoft Entra ID
-- Azure CLI
-- App registrations
-- Service principals
-- Microsoft Graph application permissions
-- OAuth 2.0
-- OAuth2 permission grants
-- JMESPath
-- PowerShell
-- Microsoft OAuth consent flow
-- CyberChef
+- [Technical Analysis](docs/technical-analysis.md) - Entra and OAuth mechanics, permission resolution, attack chain, detection opportunities
+- [Azure CLI Commands](queries/azure-cli.md) - every command used, with purpose
 
 ---
 
 # Data Handling
 
-This repository intentionally documents the **investigation method and reasoning**, not the course answer key.
-
-The following are redacted from public screenshots and command output:
-
-- `MadHat{...}` challenge values
-- usernames and email addresses
-- operative identifiers
-- tenant IDs
-- application/client IDs where environment-specific
-- object IDs and service principal IDs
-- credential key IDs
-- authorization codes and tokens
-- client secret values
-- challenge-specific redirect URI values
-- encoded challenge answers
-- any other value that functions as a lab answer
-
-For this case specifically:
-
-- Entry screenshots should redact challenge values contained in application notes.
-- Escalate should preserve the suspicious expiration date while redacting the challenge-bearing credential description and IDs.
-- Pivot should preserve the `Mad-Hat-Labs-App` owner relationship while redacting object IDs and challenge-bearing metadata.
-- The Graph permission screenshot should preserve the permission relationship while removing environment-specific identifiers where practical.
-- Persist should show that a custom API scope exists while redacting the challenge-bearing consent display value.
-- Loot should preserve `consentType`, the legacy application resource name, and `Legacy.Sync` while redacting IDs.
-- Redirect URI and CyberChef screenshots should redact challenge values while preserving the OAuth flow structure.
-- The token-capture demonstration must not expose reusable tokens, authorization codes, or other live credentials.
-
----
-
-## Resume Line
-
-> Reconstructed a five-stage OAuth consent-phishing kill chain in a live Azure training tenant using Azure CLI; traced the attack across two linked Entra app registrations through a stolen MFA-satisfied session, a long-lived client secret, an attacker-controlled service principal added as an application owner, powerful Microsoft Graph application permissions, a custom exposed API scope, and a persistent OAuth permission grant, then delivered identity- and OAuth-focused remediation recommendations.
+This repository documents method and reasoning. Challenge values, tenant and object identifiers, credentials, tokens, and environment-specific redirect values are redacted from public evidence. Full redaction detail is in the Technical Analysis.
