@@ -22,7 +22,7 @@
 <img src="https://img.shields.io/badge/CyberChef-2B5D8C?style=flat-square" alt="CyberChef"/>
 </p>
 
-> **Reading this:** the Executive Summary and Findings cover the outcome. The Investigation walks the evidence in the order it was found. Underlying mechanics are in the Technical Drill-Down at the end.
+> **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared tenant are intentionally omitted.
 
 ---
 
@@ -64,18 +64,22 @@ Read-only. No application registrations, credentials, permissions, scopes, owner
 
 ## 1. Entry
 
+### Enumerating app registrations
+
 The briefing named the flagged application but gave no identifier, so I enumerated the tenant's app registrations to obtain it.
 
 ```powershell
 az ad app list -o table
 ```
 
-The inventory returned `Mad-Hat-Legacy-Sync-Service` and its application identifier.
-
 > ![Application Inventory - Legacy App](evidence/01-app-inventory-legacy.png)
-> *Context: Application enumeration identified `Mad-Hat-Legacy-Sync-Service` and provided the `AppId` needed for deeper inspection.*
+> *Highlighted: `Mad-Hat-Legacy-Sync-Service` and its `AppId`.*
 
-I inspected the application object for configuration and any recorded context.
+The inventory returned the flagged application and the identifier needed to inspect it.
+
+### Inspecting the legacy application object
+
+With the identifier in hand, I inspected the application object for configuration and any metadata written during the incident.
 
 ```powershell
 az ad app show `
@@ -83,16 +87,16 @@ az ad app show `
   --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
-The `notes` property carried a value written during the incident, confirming the application had been touched.
-
 > ![Legacy Application Entry Evidence](evidence/02-legacy-app-entry.png)
-> *Highlighted: the `notes` property on the legacy application, redacted. Its presence confirms the application was modified during the incident.*
+> *Highlighted: the `notes` property, redacted. Its presence confirms the application was modified during the incident.*
 
-**Finding:** the flagged application was confirmed and its identifier obtained. The `notes` property established that it had been modified, but not how. Per the incident briefing, entry came through a phished user whose session was stolen after MFA had been satisfied, which is consistent with the absence of alerts in the sign-in logs.
+The `notes` property carried a value written during the incident, confirming the application had been touched. It established that the application was modified, not how. Per the briefing, entry came through a phished user whose session was stolen after MFA had been satisfied, which is consistent with the absence of alerts in the sign-in logs.
 
 ---
 
 ## 2. Escalate
+
+### Reviewing application credentials
 
 A stolen session expires. If the attacker intended to persist, a credential on the application is the mechanism that would outlast it, so I inspected the legacy application's password credentials.
 
@@ -102,16 +106,16 @@ az ad app show `
   --query passwordCredentials
 ```
 
-One client secret was present, with an expiration set near the end of the century.
-
 > ![Legacy Application Client Secret](evidence/03-legacy-client-secret.png)
-> *Highlighted: the `credential metadata` identifies the suspicious client secret, while the 2099 expiration date indicates an effectively long-lived application credential.*
+> *Highlighted: the client secret's credential metadata, with an expiration set near the end of the century.*
 
-**Finding:** access derived from a compromised user session had been converted into application authentication. The application can authenticate as itself, with no human in the flow.
+One client secret was present, expiring near the end of the century. The attacker no longer needed the stolen session; the application could authenticate as itself.
 
 ---
 
 ## 3. Pivot
+
+### Re-enumerating app registrations
 
 A secret can be rotated. That raised the question of whether anything else held control over the legacy application, so I re-enumerated the tenant's app registrations.
 
@@ -119,12 +123,14 @@ A secret can be rotated. That raised the question of whether anything else held 
 az ad app list -o table
 ```
 
-The inventory returned a second registration, `Mad-Hat-Labs-App`.
-
 > ![Application Inventory - Rogue App](evidence/04-app-inventory-rogue.png)
-> *Context: Application enumeration identified `Mad-Hat-Labs-App` and provided the `AppId` needed for deeper inspection.*
+> *Highlighted: `Mad-Hat-Labs-App` and its `AppId`.*
 
-I inspected that application object for recorded context.
+The inventory returned a second registration alongside the legacy application.
+
+### Inspecting the second registration
+
+I inspected that application object for metadata written during the incident.
 
 ```powershell
 az ad app show `
@@ -132,12 +138,14 @@ az ad app show `
   --query "{isDeviceOnlyAuthSupported:isDeviceOnlyAuthSupported,isDisabled:isDisabled,isFallbackPublicClient:isFallbackPublicClient,keyCredentials:keyCredentials,nativeAuthenticationApisEnabled:nativeAuthenticationApisEnabled,notes:notes,optionalClaims:optionalClaims}" `
 ```
 
-Its `notes` property also carried a value written during the incident.
-
 > ![Rogue Application Metadata](evidence/05-rogue-app-metadata.png)
 > *Highlighted: the `notes` property on the second registration, redacted. Its presence places this application inside the incident timeline.*
 
-A second application with incident-related metadata is suggestive, not conclusive. A relationship to the legacy application would be, so I queried its Owners collection.
+The second registration also carried incident-related metadata. That is suggestive, not conclusive. A relationship to the legacy application would be.
+
+### Querying application owners
+
+An owner can modify the application it owns, including adding credentials. I queried the legacy application's Owners collection.
 
 ```powershell
 az ad app owner list `
@@ -146,10 +154,12 @@ az ad app owner list `
   -o table
 ```
 
-The owners list returned the `Mad-Hat-Labs-App` service principal.
-
 > ![Rogue Service Principal Owns Legacy App](evidence/05a-rogue-owner-relationship.png)
-> *Evidence: The legacy application's Owners collection identified `Mad-Hat-Labs-App` as an owner, establishing a direct ownership relationship between the rogue and legacy applications.*
+> *Highlighted: the `Mad-Hat-Labs-App` service principal listed as an owner of the legacy application.*
+
+The owners list returned the second application's service principal. That connects the two applications, and it means the attacker can mint a new secret on the legacy app whenever the current one is removed.
+
+### Reviewing requested Graph permissions
 
 Ownership matters in proportion to what the owned application can do, so I inspected the legacy application's requested resource access.
 
@@ -159,12 +169,14 @@ az ad app show `
   --query requiredResourceAccess
 ```
 
-Two Microsoft Graph entries of `"type": "Role"` were returned, identifying them as application permissions rather than delegated user scopes.
-
 > ![Legacy Application Microsoft Graph Permissions](evidence/06-legacy-graph-permissions.png)
-> *Evidence: The legacy application's requested resource access contained Microsoft Graph entries of type `Role`, indicating application permissions rather than delegated user scopes.*
+> *Highlighted: two Microsoft Graph `resourceAccess` entries of `"type": "Role"`.*
 
-The entries carried permission GUIDs rather than names, so I resolved each against the Microsoft Graph service principal's `appRoles` collection.
+Both entries were `"type": "Role"`, which identifies them as application permissions rather than delegated user scopes. They carried GUIDs rather than names.
+
+### Resolving the first permission identifier
+
+Permission names live on the resource's service principal, so I resolved each GUID against Microsoft Graph's `appRoles` collection.
 
 ```powershell
 az ad sp show `
@@ -174,18 +186,33 @@ az ad sp show `
 ```
 
 > ![Directory.Read.All Application Permission](evidence/06a-directory-read-all.png)
-> *Validation: Resolving the first Microsoft Graph app-role identifier confirmed the `Directory.Read.All` application permission.*
+> *Highlighted: the first identifier resolves to `Directory.Read.All`.*
+
+The first entry resolved to a directory-wide read permission.
+
+### Resolving the second permission identifier
+
+I repeated the resolution for the second identifier.
+
+```powershell
+az ad sp show `
+  --id <MS-GRAPH-APP-ID> `
+  --query "appRoles[?id=='<PERMISSION-ID>']" `
+  -o table
+```
 
 > ![User.Read.All Application Permission](evidence/06b-user-read-all.png)
-> *Validation: Resolving the second Microsoft Graph app-role identifier confirmed the `User.Read.All` application permission.*
+> *Highlighted: the second identifier resolves to a directory-wide user permission.*
 
-**Finding:** a second application's service principal was an owner of the legacy application. An owner can create new credentials, so control of the legacy application no longer depended on any single secret surviving. Because that application held broad Graph directory permissions, the control carried directory-level reach.
+Both permissions belong to the application identity and run without a user session. With ownership of this application, the attacker held directory-level reach.
 
 ---
 
 ## 4. Persist
 
-Two paths were established: the credential and the ownership relationship. Both are removable by an administrator who finds them. I checked whether the legacy application exposed anything that would create a third.
+### Reviewing exposed API configuration
+
+Two access paths were established: the credential and the ownership relationship. Both are removable by an administrator who finds them. I checked whether the legacy application exposed anything that would create a third.
 
 ```powershell
 az ad app show `
@@ -193,18 +220,18 @@ az ad app show `
   --query api
 ```
 
-The `oauth2PermissionScopes` collection contained a custom delegated scope published by the legacy application.
-
 > ![Legacy Application Exposed API Scope](evidence/07-legacy-api-scope.png)
-> *Highlighted: the legacy application's API configuration contains an enabled custom delegated scope, `Legacy.Sync`, establishing an additional OAuth access path.*
+> *Highlighted: an enabled custom delegated scope, `Legacy.Sync`, published under the legacy application's API configuration.*
 
-**Finding:** a third path existed, built on user consent rather than a credential. Credential rotation does not touch it.
+The legacy application publishes a custom scope. Another application can request delegated access to it through user consent, giving the attacker a third path that credential rotation does not touch.
 
 ---
 
 ## 5. Loot
 
-A published scope is only useful if something requests it and the authorization response reaches infrastructure the attacker controls. I inspected the second application's web configuration.
+### Reviewing redirect URI configuration
+
+A published scope is only useful if something requests it and the authorization response reaches infrastructure the attacker controls. I inspected the rogue application's web configuration.
 
 ```powershell
 az ad app show `
@@ -212,22 +239,32 @@ az ad app show `
   --query web
 ```
 
-Multiple redirect URIs were returned: a standard local-development callback, and a second that did not match that pattern.
-
 > ![Rogue Application Redirect URIs](evidence/08-rogue-web-redirect-uris.png)
-> *Highlighted: the suspicious `redirect URI` identifies the callback destination associated with the investigated OAuth authorization flow.*
+> *Highlighted: a redirect URI that does not match the standard local-development pattern present alongside it.*
 
-To establish what that configuration produced in practice, I followed the consent flow.
+Two redirect URIs were configured. One was a normal local-development callback. The other pointed outside the tenant, and that is where authorization codes issued to this application land.
+
+### Executing the consent flow
+
+Configuration alone does not prove what the flow produces. I executed the authorization request against my own operative account to demonstrate the path end to end.
 
 > ![OAuth Consent Flow - Step 1](evidence/09-oauth-consent-step-1.png)
->
-> *Context: The consent flow showed the `rogue application` requesting delegated access to the `legacy application's` exposed API.*
+> *Highlighted: the rogue application requesting delegated access to the legacy application's exposed API.*
+
+The request surfaced as a consent prompt naming the rogue application and the scope it was asking for.
+
+### Approving the consent request
+
+The flow required explicit approval before the delegated permission could be issued.
 
 > ![OAuth Consent Flow - Step 2](evidence/10-oauth-consent-step-2.png)
->
-> *Context: The authorization flow required `explicit user consent` before the requested delegated permission could be granted.*
+> *Highlighted: the approval step required before the requested delegated permission is granted.*
 
-A consent screen is a browser event. Whether it wrote a durable object was a separate question, so I queried the grants held by the second application.
+No authentication was requested at any point. The account was already signed in, and the only action required was approval.
+
+### Querying OAuth permission grants
+
+A consent screen is a browser event. Whether it wrote a durable object was a separate question, so I queried the grants held by the rogue application.
 
 ```powershell
 az ad app permission list-grants `
@@ -236,22 +273,28 @@ az ad app permission list-grants `
   -o json
 ```
 
-The grant returned `consentType: Principal`, resource `Mad-Hat-Legacy-Sync-Service`, scope `Legacy.Sync`.
-
 > ![OAuth2 Permission Grant](evidence/10a-oauth2-permission-grant.png)
-> *Validation: The OAuth permission grant confirms that `Mad-Hat-Labs-App` received delegated access to `Mad-Hat-Legacy-Sync-Service` through the `Legacy.Sync` scope.*
+> *Highlighted: `consentType: Principal`, resource `Mad-Hat-Legacy-Sync-Service`, scope `Legacy.Sync`.*
 
-The configured callback then received the authorization response.
+The consent wrote an `OAuth2PermissionGrant` into the directory. It outlived the browser session that created it.
+
+### Capturing the authorization response
+
+With the grant in place, I confirmed where the resulting authorization response was delivered.
 
 > ![Token Capture Demonstration](evidence/11-token-captured.png)
-> *Validation: The configured `OAuth callback` successfully received the authorization response, demonstrating that the `redirect path` was operational.*
+> *Highlighted: the configured callback receiving the authorization response.*
 
-I URL-decoded the redirect data to inspect the value carried in the callback.
+The configured redirect URI received the response. The delivery path works.
+
+### Decoding the callback value
+
+The response carried URL-encoded data, so I decoded it to inspect the value in readable form.
 
 > ![CyberChef URL Decode](evidence/12-cyberchef-url-decode.png)
-> *Validation: `URL decoding` confirmed the value carried in the `callback` and allowed the authorization response to be inspected in its decoded form.*
+> *Highlighted: the decoded value carried in the callback, redacted.*
 
-**Finding:** consent wrote a persistent delegated grant into the directory, and the redirect URI sent the resulting authorization response outside the tenant. The flow required no authentication from the victim, only approval, which is why it produced no suspicious sign-in. This is a **confused deputy** pattern: a trusted application acting on a request it should never have authorized. Nothing in the chain is a vulnerability. Every component behaves as designed.
+Consent wrote a persistent delegated grant into the directory, and the redirect URI sent the resulting authorization response outside the tenant. The flow required no authentication from the victim, only approval, which is why it produces no suspicious sign-in. This is a **confused deputy** pattern: a trusted application acting on a request it should never have authorized. Nothing in the chain is a vulnerability. Every component behaves as designed.
 
 ---
 
@@ -335,7 +378,3 @@ No single control explains the incident. It exists in the relationship between i
 - [Azure CLI Commands](queries/azure-cli.md) - every command used, with purpose
 
 ---
-
-# Data Handling
-
-This repository documents method and reasoning. Challenge values, tenant and object identifiers, credentials, tokens, and environment-specific redirect values are redacted from public evidence. Full redaction detail is in the Technical Analysis.
