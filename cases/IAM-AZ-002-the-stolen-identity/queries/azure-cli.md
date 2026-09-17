@@ -3,7 +3,7 @@
 
 This file documents the Azure CLI commands used during the investigation.
 
-> **Data handling:** Application display names, custom scope names, application and client IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and any value seeded into an object field that functions as an assessment answer are replaced with placeholders or omitted. Microsoft's published identifiers, including the Microsoft Graph application ID and Microsoft Graph permission IDs, are also represented as placeholders. They carry no tenant-specific information, but resolving an identifier to a permission name is the technique this file documents, and a reader who looks the values up has performed that technique rather than read its answer.
+> **Data handling:** Application display names, custom scope names, application and client IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and challenge values are replaced with placeholders or omitted. Microsoft's publicly documented identifiers, including the Microsoft Graph application ID and Microsoft Graph permission IDs, are also represented as placeholders. They are not sensitive, but resolving an identifier to a permission name is the technique this file documents, and a reader who looks the values up has performed that technique rather than read its answer.
 
 ---
 
@@ -15,29 +15,35 @@ Used to identify the legacy application and the attacker-created application.
 az ad app list -o table
 ```
 
-**Question answered:** What application registrations exist in the tenant?
+### Purpose
+
+- Enumerate app registrations visible to the operative account
+- Identify the legacy application and the attacker-created application
+- Obtain the application/client ID needed for deeper inspection
 
 ---
 
-## 2. Inspect the Legacy Application Object
+## 2. Inspect an App Registration
 
-Used to inspect the complete Microsoft Entra application object for configuration and metadata.
+Used to inspect the complete Microsoft Entra application object.
 
 ```powershell
 az ad app show `
-  --id <LEGACY-APP-ID> `
+  --id <APP-ID> `
   -o json
 ```
 
-**Question answered:** What is the full configuration of the legacy application?
+### Purpose
 
-The raw application object exposes security-relevant properties including:
+The raw application object exposed security-relevant properties including:
 
 - `notes`
 - `passwordCredentials`
 - `requiredResourceAccess`
 - `api`
 - `web`
+
+This command was used against both the legacy and rogue applications.
 
 ---
 
@@ -50,7 +56,9 @@ az ad app show `
   -o tsv
 ```
 
-**Question answered:** What metadata was recorded in the legacy application's notes field?
+### Purpose
+
+Read the legacy application's internal notes field documenting the initial compromise context.
 
 ---
 
@@ -62,7 +70,7 @@ az ad app show `
   --query passwordCredentials
 ```
 
-**Question answered:** What password credentials are configured on the legacy application?
+### Purpose
 
 Inspect application credential metadata, including:
 
@@ -72,7 +80,7 @@ Inspect application credential metadata, including:
 - hint
 - key ID
 
-The investigation identified an unusually long-lived client secret set to expire near the end of the century.
+The investigation identified an unusually long-lived client secret.
 
 ### Alternate Credential View
 
@@ -84,9 +92,7 @@ az ad app credential list `
   -o table
 ```
 
-**Question answered:** What are the credentials configured on this application, in condensed format?
-
-This view was useful for validating the same credential metadata in a table format.
+This was useful for validating the same credential metadata in a condensed format.
 
 ---
 
@@ -98,9 +104,11 @@ az ad app owner list `
   -o json
 ```
 
-**Question answered:** Who owns the legacy application?
+### Purpose
 
-Inspect the owner relationship on the legacy app registration. The returned owner object identified the rogue application's **service principal** as an owner of the legacy application.
+Inspect the owner relationship on the legacy app registration.
+
+The returned owner object identified the rogue application's **service principal** as an owner of the legacy application.
 
 ### Condensed View
 
@@ -110,8 +118,6 @@ az ad app owner list `
   --query "[].{Owner:displayName,Type:servicePrincipalType}" `
   -o table
 ```
-
-**Question answered:** What are the owners of this application, and what type is each?
 
 ### Investigation Significance
 
@@ -141,13 +147,13 @@ az ad app show `
   --query requiredResourceAccess
 ```
 
-**Question answered:** What API permissions does the legacy application request?
+### Purpose
 
 Identify:
 
-- the resource API being requested
-- each permission GUID
-- whether each permission is an application permission or delegated permission
+- the resource API being requested,
+- each permission GUID,
+- and whether each permission is an application permission or delegated permission.
 
 The Microsoft Graph resource entry contained two `resourceAccess` objects with:
 
@@ -157,7 +163,7 @@ The Microsoft Graph resource entry contained two `resourceAccess` objects with:
 
 In `requiredResourceAccess`, `Role` represents an **application permission / app role**. It does not represent a user or an Entra directory-role assignment.
 
-### Resolve Directory.Read.All
+### Resolve `Directory.Read.All`
 
 The raw permission GUID can be resolved against the Microsoft Graph service principal's `appRoles` collection:
 
@@ -168,15 +174,23 @@ az ad sp show `
   -o table
 ```
 
-**Question answered:** What permission does this GUID represent?
-
 Result:
 
 ```text
 Directory.Read.All
 ```
 
-### Resolve User.Read.All
+Microsoft Graph identifiers (publicly documented, represented here as placeholders):
+
+```text
+Microsoft Graph App ID:
+<MS-GRAPH-APP-ID>
+
+Directory.Read.All application permission ID:
+<DIRECTORY-READ-ALL-PERMISSION-ID>
+```
+
+### Resolve `User.Read.All`
 
 ```powershell
 az ad sp show `
@@ -185,12 +199,20 @@ az ad sp show `
   -o table
 ```
 
-**Question answered:** What permission does this second GUID represent?
-
 Result:
 
 ```text
 User.Read.All
+```
+
+Microsoft Graph identifiers (publicly documented, represented here as placeholders):
+
+```text
+Microsoft Graph App ID:
+<MS-GRAPH-APP-ID>
+
+User.Read.All application permission ID:
+<USER-READ-ALL-PERMISSION-ID>
 ```
 
 ### Investigation Significance
@@ -214,9 +236,11 @@ az ad app show `
   --query api
 ```
 
-**Question answered:** What APIs does the legacy application expose?
+### Purpose
 
-Inspect the application's API configuration and the `oauth2PermissionScopes` collection. The investigation found a custom delegated scope used as part of the OAuth consent path.
+Inspect the application's API configuration and the `oauth2PermissionScopes` collection.
+
+The investigation found a custom delegated scope used as part of the OAuth consent path.
 
 ---
 
@@ -228,14 +252,16 @@ az ad app show `
   --query web
 ```
 
-**Question answered:** What redirect URIs are configured on the rogue application?
+### Purpose
 
-Inspect redirect URI configuration associated with the rogue application. The output exposed:
+Inspect redirect URI configuration associated with the rogue application.
+
+The output exposed:
 
 - a normal local-development callback
 - a second redirect URI associated with the attack flow
 
-The second redirect URI carried a query string. It was redacted in full from the public evidence rather than partially, because a query string can carry values that are not visible as sensitive at a glance.
+Challenge-specific values were redacted from the public evidence.
 
 ---
 
@@ -248,7 +274,7 @@ az ad app permission list-grants `
   -o json
 ```
 
-**Question answered:** What OAuth permission grants exist for the rogue application?
+### Purpose
 
 Confirm that the consent flow created an actual delegated OAuth authorization relationship.
 
@@ -262,7 +288,9 @@ scope: <CUSTOM-SCOPE-NAME>
 
 ### Investigation Significance
 
-This was stronger than simply observing a consent screen. It proved that consent resulted in a persistent delegated grant:
+This was stronger than simply observing a consent screen.
+
+It proved that consent resulted in a persistent delegated grant:
 
 ```text
 Rogue application / service principal
@@ -291,15 +319,11 @@ The following patterns were useful while inspecting unfamiliar application objec
 --query "keys(@)"
 ```
 
-**Result:** List of all top-level keys in the returned object.
-
 ## Check a Property Type
 
 ```powershell
 --query "type(passwordCredentials)"
 ```
-
-**Result:** The data type of the specified property.
 
 ## Count Items in an Array
 
@@ -307,15 +331,11 @@ The following patterns were useful while inspecting unfamiliar application objec
 --query "length(passwordCredentials)"
 ```
 
-**Result:** The number of items in an array.
-
 ## Show Keys Inside the First Array Object
 
 ```powershell
 --query "keys(passwordCredentials[0])"
 ```
-
-**Result:** All keys in the first item of an array.
 
 ## Select a Single Property
 
@@ -323,15 +343,11 @@ The following patterns were useful while inspecting unfamiliar application objec
 --query notes
 ```
 
-**Result:** The value of a single property.
-
 ## Select a Nested Object
 
 ```powershell
 --query api.oauth2PermissionScopes
 ```
-
-**Result:** The nested object specified.
 
 ## Select a Property from Every Array Item
 
@@ -339,23 +355,11 @@ The following patterns were useful while inspecting unfamiliar application objec
 --query "appRoles[].displayName"
 ```
 
-**Result:** All display names from every item in the array.
-
-## Filter an Array by Field Value
-
-```powershell
---query "appRoles[?id=='<PERMISSION-ID>']"
-```
-
-**Result:** Only the array items matching the condition. This is what makes permission resolution practical, since the Microsoft Graph service principal returns several hundred app roles.
-
 ## Build a Custom Output Object
 
 ```powershell
 --query "{Name:displayName,AppId:appId,ObjectId:id}"
 ```
-
-**Result:** A custom object with renamed fields.
 
 ---
 
@@ -402,4 +406,3 @@ Confirm OAuth2PermissionGrant
 - `requiredResourceAccess` shows requested API permissions, but GUIDs may require additional resolution to human-readable permission names.
 - `az ad app permission list-grants` exposes delegated OAuth grants created through consent.
 - JMESPath is useful for reducing large JSON objects into investigation-relevant fields.
-- Reading an object unprojected before narrowing to a projection is what makes the projection defensible. It is also a redaction decision: narrowing the output keeps values off the screen that would otherwise have to be blurred out of evidence afterwards.
