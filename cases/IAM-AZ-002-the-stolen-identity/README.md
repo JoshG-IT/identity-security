@@ -181,7 +181,7 @@ Permission names live on the resource's service principal, so I resolved each GU
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
+  --id <MS-GRAPH-APP-ID> `
   --query "appRoles[?id=='<PERMISSION-ID>']" `
   -o table
 ```
@@ -197,7 +197,7 @@ I repeated the resolution for the second identifier.
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
+  --id <MS-GRAPH-APP-ID> `
   --query "appRoles[?id=='<PERMISSION-ID>']" `
   -o table
 ```
