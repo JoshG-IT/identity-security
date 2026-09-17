@@ -1,7 +1,7 @@
 # Technical Analysis
 ## The Stolen Identity
 
-The Entra ID and OAuth mechanics behind the investigation. Environment-specific values and Microsoft's published identifiers alike are replaced with placeholders. The identifiers are documented by Microsoft and can be looked up by anyone working through the same technique; substituting them keeps that step as work the reader does rather than a value this file hands over.
+The Entra ID and OAuth mechanics behind the investigation. Environment-specific values are replaced with placeholders. Microsoft's publicly documented identifiers are also represented as placeholders, so that resolving them remains work the reader does.
 
 ---
 
@@ -157,7 +157,11 @@ Application permissions are the higher-risk grant, and they are exactly what sur
 
 `requiredResourceAccess` returns identifiers, not names. The names live on the resource's service principal.
 
-Microsoft Graph has a well-known application ID that is the same in every tenant and is published in Microsoft's documentation. It is represented here as `<MS-GRAPH-APP-ID>`.
+Microsoft Graph uses a well-known, publicly documented application ID:
+
+```text
+<MS-GRAPH-APP-ID>
+```
 
 ```powershell
 az ad sp show `
@@ -387,6 +391,8 @@ Consent phishing does not encounter any of them. The victim is already signed in
 
 The output of that flow is also more durable than a password. An `OAuth2PermissionGrant` is a directory object. Resetting the password does not delete it. Revoking sessions does not delete it. Enforcing MFA does not delete it. It persists until someone explicitly revokes the grant, and standard containment does not include that step.
 
+This is a **confused deputy** pattern. The legacy application is a trusted service with legitimate authority, acting on a request it should never have authorized. Nothing in the chain is a vulnerability. Every component behaves exactly as designed, and the attack is assembled entirely from configuration.
+
 ---
 
 ## 12. Confused Deputy
@@ -516,33 +522,29 @@ This repository documents method and reasoning.
 
 Redacted from public evidence and command output:
 
-- values seeded into object fields that function as assessment answers
+- challenge values
 - usernames and email addresses
 - operative identifiers
 - tenant IDs
-- application and client IDs
+- application and client IDs where environment-specific
 - object IDs and service principal IDs
 - credential key IDs
 - authorization codes and tokens
 - client secret values
 - environment-specific redirect URI values
+- encoded values that function as scenario answers
 
-Also replaced with placeholders, though published by Microsoft and identical in every tenant:
+Microsoft's publicly documented identifiers, including the Microsoft Graph application ID and the Graph permission GUIDs, are also represented as placeholders. They are not sensitive and are identical in every tenant. They are substituted because resolving an identifier to a permission name is the technique this file explains, and a reader who looks the values up has performed that technique rather than read its answer.
 
-- the Microsoft Graph application ID
-- Microsoft Graph permission IDs
-
-These carry no tenant-specific information and redacting them protects nothing. They are substituted because resolving an identifier to a permission name is the technique this file explains, and a reader who looks the values up has performed that technique rather than read its answer. The method is stated in full; the lookup is left to the reader.
-
-Application display names and the custom scope name are retained. They carry no tenant-specific value, and removing them would make the ownership and consent relationships unreadable.
+Application display names and the custom scope name are retained. They are referenced in the published scenario material, carry no tenant-specific value, and removing them would make the ownership and consent relationships unreadable.
 
 Applied per stage:
 
 | Stage | Preserved | Redacted |
 |---|---|---|
-| Entry | Initial access method recorded in notes | Value inside the notes field |
+| Entry | Initial access method recorded in notes | Challenge value inside the notes field |
 | Escalate | Expiration date showing the credential lifetime | Credential description and key ID |
-| Pivot | Owner relationship and permission names | Object IDs, service principal IDs, metadata values, permission and resource GUIDs |
+| Pivot | Owner relationship and permission names | Object IDs, service principal IDs, metadata values |
 | Persist | Existence and name of the custom scope | Consent display value |
 | Loot | `consentType`, resource name, scope name, OAuth flow structure | Grant IDs, authorization codes, tokens, environment-specific redirect values |
 
