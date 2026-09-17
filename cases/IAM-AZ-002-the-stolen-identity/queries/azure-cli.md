@@ -3,7 +3,7 @@
 
 This file documents the Azure CLI commands used during the investigation.
 
-> **Data handling:** Application display names, custom scope names, application and client IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and challenge values are replaced with placeholders or omitted. Publicly documented Microsoft identifiers, such as the Microsoft Graph application ID and Microsoft Graph permission IDs, are retained because they are published by Microsoft and are required to explain the resolution technique.
+> **Data handling:** Application display names, custom scope names, application and client IDs, object IDs, service principal IDs, tenant identifiers, grant IDs, and any value seeded into an object field that functions as an assessment answer are replaced with placeholders or omitted. Microsoft's published identifiers, including the Microsoft Graph application ID and Microsoft Graph permission IDs, are also represented as placeholders. They carry no tenant-specific information, but resolving an identifier to a permission name is the technique this file documents, and a reader who looks the values up has performed that technique rather than read its answer.
 
 ---
 
@@ -163,7 +163,7 @@ The raw permission GUID can be resolved against the Microsoft Graph service prin
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
+  --id <MS-GRAPH-APP-ID> `
   --query "appRoles[?id=='<DIRECTORY-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
@@ -176,17 +176,11 @@ Result:
 Directory.Read.All
 ```
 
-Microsoft Graph application ID (publicly documented):
-
-```text
-00000003-0000-0000-c000-000000000000
-```
-
 ### Resolve User.Read.All
 
 ```powershell
 az ad sp show `
-  --id 00000003-0000-0000-c000-000000000000 `
+  --id <MS-GRAPH-APP-ID> `
   --query "appRoles[?id=='<USER-READ-ALL-PERMISSION-ID>']" `
   -o table
 ```
@@ -241,7 +235,7 @@ Inspect redirect URI configuration associated with the rogue application. The ou
 - a normal local-development callback
 - a second redirect URI associated with the attack flow
 
-Challenge-specific values were redacted from the public evidence.
+The second redirect URI carried a query string. It was redacted in full from the public evidence rather than partially, because a query string can carry values that are not visible as sensitive at a glance.
 
 ---
 
@@ -347,6 +341,14 @@ The following patterns were useful while inspecting unfamiliar application objec
 
 **Result:** All display names from every item in the array.
 
+## Filter an Array by Field Value
+
+```powershell
+--query "appRoles[?id=='<PERMISSION-ID>']"
+```
+
+**Result:** Only the array items matching the condition. This is what makes permission resolution practical, since the Microsoft Graph service principal returns several hundred app roles.
+
 ## Build a Custom Output Object
 
 ```powershell
@@ -400,3 +402,4 @@ Confirm OAuth2PermissionGrant
 - `requiredResourceAccess` shows requested API permissions, but GUIDs may require additional resolution to human-readable permission names.
 - `az ad app permission list-grants` exposes delegated OAuth grants created through consent.
 - JMESPath is useful for reducing large JSON objects into investigation-relevant fields.
+- Reading an object unprojected before narrowing to a projection is what makes the projection defensible. It is also a redaction decision: narrowing the output keeps values off the screen that would otherwise have to be blurred out of evidence afterwards.
