@@ -9,17 +9,16 @@
 <img src="https://img.shields.io/badge/IDENTITY_SECURITY-2B5D8C?style=for-the-badge" alt="Identity Security"/>
 <img src="https://img.shields.io/badge/ENTRA_ID-2B5D8C?style=for-the-badge" alt="Entra ID"/>
 <img src="https://img.shields.io/badge/AZURE_CLI-2B5D8C?style=for-the-badge" alt="Azure CLI"/>
-<img src="https://img.shields.io/badge/OAUTH_2.0-2B5D8C?style=for-the-badge" alt="OAuth 2.0"/>
 <img src="https://img.shields.io/badge/READ--ONLY-6E7681?style=for-the-badge" alt="Read-only"/>
 </p>
 
 <p align="center">
-<img src="https://img.shields.io/badge/App_Registrations-2B5D8C?style=flat-square" alt="App Registrations"/>
-<img src="https://img.shields.io/badge/Service_Principals-2B5D8C?style=flat-square" alt="Service Principals"/>
-<img src="https://img.shields.io/badge/Graph_App_Permissions-2B5D8C?style=flat-square" alt="Graph Application Permissions"/>
-<img src="https://img.shields.io/badge/OAuth2_Permission_Grants-2B5D8C?style=flat-square" alt="OAuth2 Permission Grants"/>
-<img src="https://img.shields.io/badge/JMESPath-2B5D8C?style=flat-square" alt="JMESPath"/>
-<img src="https://img.shields.io/badge/CyberChef-2B5D8C?style=flat-square" alt="CyberChef"/>
+<img src="https://img.shields.io/badge/App_Registrations-6E7681?style=flat-square" alt="App Registrations"/>
+<img src="https://img.shields.io/badge/Service_Principals-6E7681?style=flat-square" alt="Service Principals"/>
+<img src="https://img.shields.io/badge/Graph_App_Permissions-6E7681?style=flat-square" alt="Graph Application Permissions"/>
+<img src="https://img.shields.io/badge/OAuth2_Permission_Grants-6E7681?style=flat-square" alt="OAuth2 Permission Grants"/>
+<img src="https://img.shields.io/badge/JMESPath-6E7681?style=flat-square" alt="JMESPath"/>
+<img src="https://img.shields.io/badge/CyberChef-6E7681?style=flat-square" alt="CyberChef"/>
 </p>
 
 > **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared tenant are intentionally omitted. This investigation was performed in a live multi-user Azure training tenant with Read-only directory application access, and is not presented as a production customer incident.
