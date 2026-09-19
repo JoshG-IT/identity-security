@@ -18,7 +18,7 @@
 <img src="https://img.shields.io/badge/Graph_App_Permissions-6E7681?style=flat-square" alt="Graph Application Permissions"/>
 <img src="https://img.shields.io/badge/OAuth2_Permission_Grants-6E7681?style=flat-square" alt="OAuth2 Permission Grants"/>
 <img src="https://img.shields.io/badge/JMESPath-6E7681?style=flat-square" alt="JMESPath"/>
-<img src="https://img.shields.io/badge/CyberChef-6E7681?style=flat-square" alt="CyberChef"/>
+<img src="https://img.shields.io/badge/PowerShell-6E7681?style=flat-square" alt="PowerShell"/>
 </p>
 
 > **Scope note:** The architecture diagram represents only the identities, application registrations, credentials, permissions, OAuth relationships, and redirect infrastructure relevant to this investigation. Other identities and resources in the shared tenant are intentionally omitted. This investigation was performed in a live multi-user Azure training tenant with Read-only directory application access, and is not presented as a production customer incident.
@@ -290,9 +290,13 @@ The configured redirect URI received the response. The delivery path works.
 
 ### Decoding the callback value
 
-The response carried URL-encoded data, so I decoded it to inspect the value in readable form.
+The response carried URL-encoded data. An authorization response is live credential material, so I decoded it locally in the session I was already working in rather than passing it to an external tool.
 
-> ![CyberChef URL Decode](evidence/12-cyberchef-url-decode.png)
+```powershell
+[System.Uri]::UnescapeDataString("<ENCODED-CALLBACK-VALUE>")
+```
+
+> ![URL Decode](evidence/12a-url-decode-dotnet.png)
 > *Highlighted: the decoded value carried in the callback, redacted.*
 
 Consent wrote a persistent delegated grant into the directory, and the redirect URI sent the resulting authorization response outside the tenant. The flow required no authentication from the victim, only approval, which is why it produces no suspicious sign-in. This is a **confused deputy** pattern: a trusted application acting on a request it should never have authorized. Nothing in the chain is a vulnerability. Every component behaves as designed.
