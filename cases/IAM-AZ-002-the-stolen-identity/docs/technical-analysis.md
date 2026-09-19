@@ -295,6 +295,22 @@ If the redirect URI resolves to infrastructure outside the tenant, the authoriza
 
 This is why a redirect URI is security configuration. It determines where credentials are delivered.
 
+### Handling the authorization response during analysis
+
+The value delivered to the callback is credential material. An authorization code is redeemable for a token until it is exchanged or expires, so an investigator holding one is holding a live credential, not an artifact.
+
+The value arrives URL-encoded. Decoding it is a string operation with nothing platform-specific about it, and the shell the investigation was already running in handles it directly:
+
+```powershell
+[System.Uri]::UnescapeDataString("<ENCODED-CALLBACK-VALUE>")
+```
+
+`System.Uri` is a .NET class and `UnescapeDataString` is a static method on it. PowerShell is built on .NET, so the method is available with no module to import and nothing to install.
+
+Azure CLI cannot do this and is not expected to. `az` is a client for Azure resource endpoints, and its verbs address resources rather than strings. `--query` filters JSON that has already been returned. Decoding is a property of the shell, not of the tool running inside it.
+
+A hosted decoding tool produces the same output. The difference is that the value has to leave the machine to get there. Against a live tenant that means transmitting an authorization code to a third party, which is the outcome the investigation is documenting an attacker achieving. Decoding locally removes the question.
+
 ---
 
 ## 9. OAuth2PermissionGrant
@@ -485,6 +501,10 @@ MFA protects authentication. It does not invalidate a stolen session, an applica
 
 Owners, credentials, Graph permissions, exposed scopes, redirect URIs, and consent grants are all security controls, and all are editable by anyone with sufficient influence over the application.
 
+### Evidence can be a live credential
+
+An authorization code recovered during analysis is redeemable until it is exchanged or expires. Where it is opened, decoded, or stored is a handling decision, and the convenient answer and the correct answer are frequently different.
+
 ### The attack surface is a graph
 
 ```text
@@ -548,7 +568,7 @@ Applied per stage:
 | Persist | Existence and name of the custom scope | Consent display value |
 | Loot | `consentType`, resource name, scope name, OAuth flow structure | Grant IDs, authorization codes, tokens, environment-specific redirect values |
 
-The callback evidence does not expose reusable tokens, authorization codes, or other live credentials.
+The callback evidence does not expose reusable tokens, authorization codes, or other live credentials. The decoded value was produced locally and was never transmitted to an external service.
 
 ---
 
