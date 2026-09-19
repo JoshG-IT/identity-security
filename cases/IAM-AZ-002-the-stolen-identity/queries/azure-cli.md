@@ -307,6 +307,28 @@ Legacy application
 
 ---
 
+## 10. Decode the Callback Value
+
+```powershell
+[System.Uri]::UnescapeDataString("<ENCODED-CALLBACK-VALUE>")
+```
+
+### Purpose
+
+Render the URL-encoded value carried in the authorization response in readable form.
+
+### Note on the Interface
+
+This is not an Azure CLI command. `az` is a client for Azure resource endpoints, and its verbs address resources rather than strings; `--query` filters JSON that has already been returned. Decoding is a shell operation.
+
+`System.Uri` is a .NET class and `UnescapeDataString` is a static method on it. PowerShell is built on .NET, so the method is available in any session with no module to import and nothing to install. It is recorded in this file because it was run in the same session as every command above and belongs in the command sequence.
+
+### Why Locally
+
+An authorization code is redeemable for a token until it is exchanged or expires, which makes the callback value a live credential rather than an artifact. A hosted decoding tool returns the same output, but the value has to leave the machine to reach it. Against a live tenant that means transmitting an authorization code to a third party, which is the outcome this investigation documents an attacker achieving.
+
+---
+
 # JMESPath Exploration Notes
 
 Azure CLI uses JMESPath for `--query`.
@@ -394,6 +416,9 @@ Inspect redirect URI configuration
         |
         v
 Confirm OAuth2PermissionGrant
+        |
+        v
+Decode the callback value
 ```
 
 ---
@@ -406,3 +431,4 @@ Confirm OAuth2PermissionGrant
 - `requiredResourceAccess` shows requested API permissions, but GUIDs may require additional resolution to human-readable permission names.
 - `az ad app permission list-grants` exposes delegated OAuth grants created through consent.
 - JMESPath is useful for reducing large JSON objects into investigation-relevant fields.
+- Azure CLI runs inside a shell, and the shell handles what the CLI does not. Decoding, encoding, and text manipulation are shell operations and do not require a separate tool.
