@@ -54,6 +54,7 @@ Read-only. No application registrations, credentials, permissions, scopes, owner
 | Environment | Live multi-user Azure tenant |
 | Access level | Read-only directory application access |
 | Investigation interface | Azure CLI |
+| Shell | PowerShell |
 | Query/filter language | JMESPath |
 | Evidence source | Entra app registration and service principal objects |
 
@@ -290,7 +291,7 @@ The configured redirect URI received the response. The delivery path works.
 
 ### Decoding the callback value
 
-The response carried URL-encoded data. An authorization response is live credential material, so I decoded it locally in the session I was already working in rather than passing it to an external tool.
+The response carried URL-encoded data. An authorization code is usable credential material until it is exchanged or expires, so I decoded it in the session rather than pasting it into a hosted tool where the value would leave the machine.
 
 ```powershell
 [System.Uri]::UnescapeDataString("<ENCODED-CALLBACK-VALUE>")
@@ -373,7 +374,7 @@ No single control explains the incident. It exists in the relationship between i
 - Application permissions are exercised by the application identity, so they survive containment aimed at the user and are not subject to Conditional Access.
 - Exposed API scopes and redirect URIs are security configuration, not developer settings. The redirect URI determines where authorization codes are delivered.
 - Consent grants persist as directory objects and require explicit revocation. Password resets, session revocation, and MFA enforcement do not remove them.
-- Any standard user can register an application by default and becomes its owner. Application creation is not a privileged action, but application ownership is a privileged position.
+- Artifacts recovered during an investigation can themselves be live credentials. An authorization code is usable until it is exchanged or expires, which makes where it is handled a decision rather than a convenience.
 
 ---
 
